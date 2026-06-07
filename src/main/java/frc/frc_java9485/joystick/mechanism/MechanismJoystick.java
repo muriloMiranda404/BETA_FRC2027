@@ -1,0 +1,116 @@
+package frc.frc_java9485.joystick.mechanism;
+
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
+import frc.frc_java9485.constants.JoystickConsts;
+
+public class MechanismJoystick implements MechanismJoystickIO {
+  private final CommandXboxController joystick;
+  private static MechanismJoystick mInstance;
+
+  public static MechanismJoystick getInstance() {
+    if (mInstance == null) {
+      mInstance = new MechanismJoystick();
+    }
+    return mInstance;
+  }
+
+  private MechanismJoystick() {
+    joystick = new CommandXboxController(JoystickConsts.MECHANISM_PORT);
+  }
+
+  @Override
+  public Trigger a() {
+    return joystick.a();
+  }
+
+  @Override
+  public double getLeftX(){
+    return joystick.getLeftX();
+  }
+
+  @Override
+  public double getLeftY(){
+    return joystick.getLeftY();
+  }
+
+  @Override
+  public double getRightX(){
+    return joystick.getRightX();
+  }
+
+  @Override
+  public double getRightY(){
+    return joystick.getRightY();
+  }
+
+  @Override
+  public boolean getRightBumper(){
+    return joystick.rightBumper().getAsBoolean();
+  }
+
+  @Override
+  public Trigger leftBumper(){
+    return joystick.leftBumper();
+  }
+
+  @Override
+  public double getRightTrigger(){
+    return joystick.getRightTriggerAxis();
+  }
+
+  @Override
+  public Trigger b() {
+    return joystick.b();
+  }
+
+  @Override
+  public Trigger x() {
+    return joystick.x();
+  }
+
+  @Override
+  public Trigger y() {
+    return joystick.y();
+  }
+
+  @Override
+  public Trigger rightTrigger() {
+    return joystick.rightTrigger();
+  }
+
+  @Override
+  public Trigger leftTrigger() {
+    return joystick.leftTrigger();
+  }
+
+  @Override
+  public Trigger backRight() {
+    return joystick.button(8);
+  }
+
+  @Override
+  public Trigger backLeft() {
+    return joystick.button(7);
+  }
+
+  @Override
+  public Trigger getUpPOV() {
+    return joystick.povUp();
+  }
+
+  @Override
+  public Trigger getDownPOV(){
+    return joystick.povDown();
+  }
+
+  @Override
+  public Trigger getRightPOV() {
+    return joystick.povRight();
+  }
+
+  @Override
+  public Trigger getLeftPOV() {
+      return joystick.povLeft();
+  }
+}

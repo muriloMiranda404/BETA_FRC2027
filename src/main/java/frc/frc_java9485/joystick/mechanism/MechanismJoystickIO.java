@@ -1,0 +1,44 @@
+package frc.frc_java9485.joystick.mechanism;
+
+import edu.wpi.first.wpilibj2.command.button.Trigger;
+
+public interface MechanismJoystickIO {
+
+  public Trigger a(); // travar
+
+  public Trigger b();
+
+  public Trigger x();
+
+  public Trigger y();
+
+  public double getLeftX();
+
+  public double getLeftY();
+
+  public double getRightY();
+
+  public Trigger getUpPOV();
+
+  public Trigger leftBumper();
+
+  public double getRightTrigger();
+
+  public Trigger getRightPOV();
+
+  public Trigger getLeftPOV();
+
+  public boolean getRightBumper();
+
+  public double getRightX();
+
+  public Trigger getDownPOV();
+
+  public Trigger rightTrigger();
+
+  public Trigger leftTrigger();
+
+  public Trigger backRight();
+
+  public Trigger backLeft();
+}
