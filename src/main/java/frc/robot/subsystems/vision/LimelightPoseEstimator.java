@@ -7,14 +7,13 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.networktables.NetworkTableInstance;
-import frc.Java_Is_UnderControl.Logging.EnhancedLoggers.CustomBooleanLogger;
-import frc.Java_Is_UnderControl.Logging.EnhancedLoggers.CustomDoubleLogger;
-import frc.Java_Is_UnderControl.Logging.EnhancedLoggers.CustomPose2dLogger;
-import frc.Java_Is_UnderControl.Logging.EnhancedLoggers.CustomStringLogger;
-import frc.Java_Is_UnderControl.Swerve.OdometryEnabledSwerveSubsystem;
-import frc.Java_Is_UnderControl.Vision.Deprecated.Cameras.LimelightHelpers;
-import frc.Java_Is_UnderControl.Vision.Deprecated.Cameras.LimelightHelpers.PoseEstimate;
-import frc.robot.constants.VisionConstants;
+import frc.frc_java9485.loggers.CustomBooleanLogger;
+import frc.frc_java9485.loggers.CustomDoubleLogger;
+import frc.frc_java9485.loggers.CustomPose2dLogger;
+import frc.frc_java9485.loggers.CustomStringLogger;
+import frc.robot.subsystems.swerve.StaticSwerve;
+import frc.robot.subsystems.vision.LimelightHelpers.PoseEstimate;
+import frc.robot.subsystems.vision.io.PoseEstimator;
 
 public class LimelightPoseEstimator implements PoseEstimator {
   NetworkTableInstance inst = NetworkTableInstance.getDefault();
@@ -83,7 +82,7 @@ public class LimelightPoseEstimator implements PoseEstimator {
   public Optional<PoseEstimation> getEstimatedPose(Pose2d referencePose) {
     try {
       if (!LimelightHelpers.getTV(this.limelightName)
-          || Math.abs(OdometryEnabledSwerveSubsystem.robotAngularVelocity) >= limitAngVelForUpdating) {
+          || Math.abs(StaticSwerve.getAngularVelocity()) >= limitAngVelForUpdating) {
         this.isDetectingLogger.append(false);
         this.numberOfDetectedTagsLogger.append(0);
         this.stateOfPoseUpdate.append("WITHOUT_TARGET_OR_HIGH_ANGULAR_VELOCITY");
@@ -134,10 +133,10 @@ public class LimelightPoseEstimator implements PoseEstimator {
   }
 
   private PoseEstimation convertPoseEstimate(PoseEstimate limelightPoseEstimate) {
-    double stdDevXY = VisionConstants.xyStdDevCoefficient * Math.pow(limelightPoseEstimate.avgTagDist, 2)
+    double stdDevXY = 0.04 * Math.pow(limelightPoseEstimate.avgTagDist, 2)
         / limelightPoseEstimate.tagCount;
     double stdDevTheta = useVisionHeadingCorrection
-        ? VisionConstants.xyStdDevCoefficient * Math.pow(limelightPoseEstimate.avgTagDist, 2)
+        ? 0.04 * Math.pow(limelightPoseEstimate.avgTagDist, 2)
             / limelightPoseEstimate.tagCount
         : Double.POSITIVE_INFINITY;
     return new PoseEstimation(new Pose3d(limelightPoseEstimate.pose), limelightPoseEstimate.timestampSeconds,

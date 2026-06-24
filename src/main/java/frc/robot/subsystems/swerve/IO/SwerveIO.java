@@ -76,4 +76,6 @@ public interface SwerveIO {
 
   public Command driveAnguladoCommand(DoubleSupplier X, DoubleSupplier Y,
                                       DoubleSupplier headingX, DoubleSupplier headingY);
+
+  public double getAngularVelocity();
 }

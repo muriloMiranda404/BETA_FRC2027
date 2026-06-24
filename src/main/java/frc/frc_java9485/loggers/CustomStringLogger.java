@@ -1,11 +1,11 @@
-package frc.Java_Is_UnderControl.Logging.EnhancedLoggers;
+package frc.frc_java9485.loggers;
 
-import edu.wpi.first.datalog.StringLogEntry;
+import edu.wpi.first.util.datalog.StringLogEntry;
 import edu.wpi.first.wpilibj.DataLogManager;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
-public class CustomStringLogger extends  StringLogEntry{
+public class CustomStringLogger extends StringLogEntry{
 
   private static boolean isFmsMatch;
 
