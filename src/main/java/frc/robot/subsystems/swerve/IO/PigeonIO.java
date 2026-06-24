@@ -7,8 +7,8 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
-import frc.frc_java9485.constants.ComponentsConsts;
-import frc.frc_java9485.constants.mechanisms.DriveConsts;
+import frc.frc_java9485.constants.robot.ComponentsConsts;
+import frc.frc_java9485.constants.robot.DriveConsts;
 import frc.frc_java9485.motors.rev.io.SparkOdometryThread;
 
 import java.util.Queue;

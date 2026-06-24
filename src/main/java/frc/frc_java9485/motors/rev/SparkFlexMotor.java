@@ -7,6 +7,7 @@ import static edu.wpi.first.units.Units.RPM;
 import static edu.wpi.first.units.Units.Rotations;
 import static edu.wpi.first.units.Units.Seconds;
 import static edu.wpi.first.units.Units.Volts;
+import static frc.frc_java9485.constants.utils.LoggerConstants.*;
 
 import java.util.function.Supplier;
 
@@ -16,50 +17,65 @@ import com.revrobotics.PersistMode;
 import com.revrobotics.REVLibError;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.ResetMode;
-import com.revrobotics.spark.FeedbackSensor;
-import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.SparkBase.ControlType;
-import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.SparkFlex;
-import com.revrobotics.spark.config.SparkFlexConfig;
+import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.FeedbackSensor;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+import com.revrobotics.spark.config.SparkFlexConfig;
 
-import edu.wpi.first.math.controller.ElevatorFeedforward;
-import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
-import static frc.frc_java9485.constants.LoggerConstants.*;
-
 import frc.frc_java9485.motors.rev.io.SparkIO;
 import frc.frc_java9485.motors.rev.io.SparkInputsAutoLogged;
-import frc.frc_java9485.utils.TunableControls.ControlConstants;
 
-public class SparkFlexMotor implements SparkIO {
+public class SparkFlexMotor implements SparkIO{
   private final SparkFlex motor;
   private final SparkFlexConfig config;
+  private final String name;
+  private final boolean usingAlternateEncoder;
 
   private double speed = 0;
   private double porcentage = 0;
   private boolean inverted = false;
+  private IdleMode lastIdleMode = null;
 
-  private IdleMode currentIdleMode;
+  private double targetPercentage;
+  private double targetPosition;
+  private double taregtSpeed;
 
-  private final String name;
+  private double lastTime;
+  private final Timer timer = new Timer();
 
-  public SparkFlexMotor(int id, String name) {
-    this.config = new SparkFlexConfig();
+  public SparkFlexMotor(int id, String name){
+    this(id, false, name);
+  }
+
+  public SparkFlexMotor(int id, Boolean usingAlternateEncoder, String name) {
     this.motor = new SparkFlex(id, MotorType.kBrushless);
-
+    this.config = new SparkFlexConfig();
+    this.usingAlternateEncoder = usingAlternateEncoder;
     this.name = name;
 
     cleanStickFaults();
+    this.setAlternateEndoder(usingAlternateEncoder);
+  }
+
+  private void setAlternateEndoder(boolean usingAlternateEncoder){
+    if(usingAlternateEncoder){
+      this.config.closedLoop.feedbackSensor(FeedbackSensor.kAlternateOrExternalEncoder);
+      this.config.externalEncoder.countsPerRevolution(8192);
+    }
+
+    this.config.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
   }
 
   @Override
   public void updateInputs(SparkInputsAutoLogged inputs) {
-    inputs.id = motor.getDeviceId();
     inputs.speed = this.speed;
+    inputs.id = motor.getDeviceId();
     inputs.inverted = this.inverted;
     inputs.currentRPM = RPM.of(getRPM());
     inputs.currentAmps = Amps.of(getCurrent());
@@ -69,23 +85,24 @@ public class SparkFlexMotor implements SparkIO {
     inputs.positionSetpoint = Rotations.of(getClosedLoopController().getMAXMotionSetpointPosition());
     inputs.speedSetpoint = RPM.of(getClosedLoopController().getMAXMotionSetpointVelocity());
 
-    Logger.processInputs(SPARK_FLEX_KEY + name, inputs);
+    Logger.processInputs(SPARK_MAX_BRUSHLESS_KEY + name, inputs);
+  }
+
+  @Override
+  public boolean atSetpoint() {
+      return getClosedLoopController().isAtSetpoint();
   }
 
   @Override
   public void setSpeed(double speeds) {
-    if (speeds != speed) {
-      motor.set(speeds);
-      this.speed = speeds;
+    if (speeds != this.targetPercentage) {
+      this.motor
+          .getClosedLoopController()
+          .setSetpoint(speeds, ControlType.kVelocity);
     }
-  }
-
-  @Override
-  public void setPorcentage(double porcentage) {
-    if (porcentage != this.porcentage) {
-      this.porcentage = porcentage;
-      motor.set(porcentage);
-    }
+    this.targetPercentage = speeds;
+    this.targetPosition = Double.NaN;
+    this.taregtSpeed = Double.NaN;
   }
 
   @Override
@@ -100,13 +117,9 @@ public class SparkFlexMotor implements SparkIO {
 
   @Override
   public void setSetpoint(double setpoint, ControlType ctrl) {
-    if (setpoint != getRPM()) {
-      getClosedLoopController().setSetpoint(setpoint, ctrl);
+    if (setpoint != getPosition()) {
+      motor.getClosedLoopController().setSetpoint(setpoint, ctrl);
     }
-  }
-
-  public void setRPM(double RPM){
-    motor.set(RPM/6000);
   }
 
   @Override
@@ -130,30 +143,36 @@ public class SparkFlexMotor implements SparkIO {
 
   @Override
   public void followMotor(int id) {
-      config.follow(id);
-  }
-
-  @Override
-  public void setVoltage(double voltage) {
-    motor.setVoltage(voltage);
+    config.follow(id);
   }
 
   @Override
   public void setVoltage(Voltage voltage) {
-    motor.setVoltage(voltage);
+    if (voltage.in(Volts) != this.targetPercentage) {
+      this.motor.set(voltage.in(Volts));
+    }
+    this.targetPercentage = voltage.in(Volts);
+    this.targetPosition = Double.NaN;
+    this.taregtSpeed = Double.NaN;
   }
 
   @Override
   public double getTemperature() {
-      return motor.getMotorTemperature();
+    return motor.getMotorTemperature();
   }
 
   @Override
-  public void setIdleMode(IdleMode idleMode) {
-    this.currentIdleMode = idleMode;
-    config.idleMode(idleMode);
+  public void setIdleMode(boolean isBrake) {
+    IdleMode targetIdleMode = isBrake ? IdleMode.kBrake : IdleMode.kCoast;
+    if (lastIdleMode == targetIdleMode) {
+      return;
+    }
+    config.idleMode(targetIdleMode);
+    motor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    this.lastIdleMode = targetIdleMode;
   }
 
+  @Override
   public double getCurrent(){
     return motor.getOutputCurrent();
   }
@@ -166,10 +185,15 @@ public class SparkFlexMotor implements SparkIO {
 
   @Override
   public IdleMode getIdleMode() {
-      return currentIdleMode;
+      return lastIdleMode;
   }
 
-  private void configureSparkFLEX(Supplier<REVLibError> config) {
+  @Override
+  public void resetPositionByEncoder(double posisition) {
+      getEncoder().setPosition(posisition);
+  }
+
+  private void configureSparkFlex(Supplier<REVLibError> config) {
     for (int i = 0; i < maximumRetries; i++) {
       if (config.get() == REVLibError.kOk) {
         return;
@@ -186,9 +210,8 @@ public class SparkFlexMotor implements SparkIO {
 
   @Override
   public void cleanStickFaults() {
-    configureSparkFLEX(motor::clearFaults);
+      configureSparkFlex(motor::clearFaults);
   }
-
 
   @Override
   public void setForwardSoftLimit(double limit) {
@@ -221,8 +244,31 @@ public class SparkFlexMotor implements SparkIO {
   }
 
   @Override
-  public void setClosedLoopFeedbackSensor(FeedbackSensor feedbackSensor) {
-    config.closedLoop.feedbackSensor(feedbackSensor);
+  public double getRate() {
+      if(usingAlternateEncoder){
+        return motor.getExternalEncoder().getVelocity();
+      }
+      return motor.getEncoder().getVelocity();
+  }
+
+  @Override
+  public String getMotorName() {
+    return name;
+  }
+
+  @Override
+  public int getDeviceId() {
+    return motor.getDeviceId();
+  }
+
+  @Override
+  public boolean isFollower() {
+    return motor.isFollower();
+  }
+
+  @Override
+  public boolean isUsingAlternateEncoder() {
+    return usingAlternateEncoder;
   }
 
   @Override
@@ -237,38 +283,25 @@ public class SparkFlexMotor implements SparkIO {
   }
 
   @Override
-    public void setClosedLoopPhysical(double kS, double kG) {
-      config.closedLoop.feedForward.kS(kS);
-      config.closedLoop.feedForward.kG(kG);
-    }
-
-  @Override
-  public void setClosedLoopControlConstants(ControlConstants constants) {
-      PIDController pid = constants.getPIDController();
-      ElevatorFeedforward ff = constants.getElevatorFeedforward();
-
-      setClosedLoopPID(pid);
-      setClosedLoopFeedForward(ff.getKa(), ff.getKv());
-      setClosedLoopPhysical(ff.getKs(), ff.getKg());
-  }
-
-  @Override
-  public void setClosedLoopPID(PIDController pid) {
-    setClosedLoopPID(pid.getP(), pid.getI(), pid.getD());
+  public void setClosedLoopPhysical(double kS, double kG) {
+    config.closedLoop.feedForward.kS(kS);
+    config.closedLoop.feedForward.kG(kG);
   }
 
   @Override
   public void resetConfigToDefault(Motor motor) {
     switch (motor) {
       case NEO_1:
-        throw new RuntimeException("Cannot configure a Spark Flex to NEO 1.0 default config");
-      case NEO_2:
-        throw new RuntimeException("Cannot configure a Spark Flex to NEO 2.0 default config");
-      case NEO_550:
-        throw new RuntimeException("Cannot configure a Spark Flex to NEO 500 default config");
-      case NEO_VORTEX:
-        config.apply(SparkFlexConfig.Presets.REV_Vortex);
+        System.out.println("não é possivel configurar");
         break;
+      case NEO_2:
+        System.out.println("não é possivel configurar");
+        break;
+      case NEO_550:
+        System.out.println("não é possivel configurar");
+        break;
+      case NEO_VORTEX:
+      config.apply(SparkFlexConfig.Presets.REV_Vortex);
     }
   }
 
@@ -282,13 +315,8 @@ public class SparkFlexMotor implements SparkIO {
     if (!DriverStation.isDisabled()) {
       throw new RuntimeException("Config updates cannot be applied while the robot is Enabled!");
     }
-    configureSparkFLEX(() -> {
+    configureSparkFlex(() -> {
       return motor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
     });
-  }
-
-  @Override
-  public void resetPositionByEncoder(double posisition) {
-      getEncoder().setPosition(posisition);
   }
 }

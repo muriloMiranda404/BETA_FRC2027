@@ -2,7 +2,7 @@ package frc.frc_java9485.joystick.mechanism;
 
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
-import frc.frc_java9485.constants.JoystickConsts;
+import frc.frc_java9485.constants.utils.JoystickConsts;
 
 public class MechanismJoystick implements MechanismJoystickIO {
   private final CommandXboxController joystick;

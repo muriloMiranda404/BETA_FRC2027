@@ -17,11 +17,15 @@ public interface ConveyorIO {
        public boolean isLocked = false;
     }
 
-    public void runConveyor(double speed);
-    public void stopConveyor();
+    default void runToMax(){};
 
-    public boolean conveyorIsInHome();
-    public boolean conveyorInLimit();
+    default void runToMin(){};
 
-    public void updateInputs(ConveyorInputs inputs);
+    default void stop(){};
+
+    boolean atHome();
+
+    boolean atLimit();
+
+    default void processInputs(ConveyorInputsAutoLogged inputs){};
 }

@@ -1,9 +1,10 @@
 package frc.frc_java9485.sensor;
 
+import static frc.frc_java9485.constants.utils.LoggerConstants.*;
+
 import org.littletonrobotics.junction.Logger;
 
 import edu.wpi.first.wpilibj.DigitalInput;
-import static frc.frc_java9485.constants.LoggerConstants.*;
 
 public class DigitalSensor implements SensorIO{
 
@@ -14,7 +15,7 @@ public class DigitalSensor implements SensorIO{
     private final SensorInputsAutoLogged sensorInputsAutoLogged;
 
     public DigitalSensor(int input, boolean inverted, String identification){
-        sensor = new DigitalInput(input);
+        this.sensor = new DigitalInput(input);
         this.inverted = inverted;
         this.identification = identification;
         this.sensorInputsAutoLogged = new SensorInputsAutoLogged();
@@ -42,11 +43,5 @@ public class DigitalSensor implements SensorIO{
     @Override
     public boolean isInverted() {
         return inverted;
-    }
-
-    @Override
-    public void updateInputs(SensorInputs inputs) {
-        inputs.detected = isDetected();
-        inputs.inverted = isInverted();
     }
 }

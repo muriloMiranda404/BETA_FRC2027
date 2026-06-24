@@ -1,8 +1,10 @@
 package frc.robot.subsystems.swerve;
 
-import static frc.frc_java9485.constants.RobotConsts.CURRENT_ROBOT_MODE;
-import static frc.frc_java9485.constants.RobotConsts.isSimulation;
-import static frc.frc_java9485.constants.mechanisms.DriveConsts.*;
+import static frc.frc_java9485.constants.robot.ComponentsConsts.*;
+import static frc.frc_java9485.constants.robot.DriveConsts.*;
+import static frc.frc_java9485.constants.robot.RobotConsts.CURRENT_ROBOT_MODE;
+import static frc.frc_java9485.constants.robot.RobotConsts.isSimulation;
+import static frc.frc_java9485.constants.utils.FieldElementsConst.FieldMeansureds.*;
 
 import java.io.File;
 import java.util.concurrent.locks.Lock;
@@ -37,10 +39,7 @@ import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import static frc.frc_java9485.constants.ComponentsConsts.*;
-import static frc.frc_java9485.constants.FieldConsts.FieldMeansureds.*;
-
-import frc.frc_java9485.constants.RobotConsts.RobotModes;
+import frc.frc_java9485.constants.robot.RobotConsts.RobotModes;
 import frc.frc_java9485.motors.rev.io.SparkOdometryThread;
 import frc.frc_java9485.utils.MathUtils;
 import frc.robot.subsystems.swerve.IO.GyroIOInputsAutoLogged;
@@ -49,6 +48,7 @@ import frc.robot.subsystems.swerve.IO.SwerveIO;
 import frc.robot.subsystems.swerve.IO.SwerveInputsAutoLogged;
 import swervelib.SwerveDrive;
 import swervelib.SwerveModule;
+import swervelib.math.SwerveMath;
 import swervelib.parser.SwerveParser;
 import swervelib.simulation.ironmaple.simulation.drivesims.COTS;
 import swervelib.simulation.ironmaple.simulation.drivesims.GyroSimulation;
@@ -346,6 +346,21 @@ public class SwerveSubsystem extends SubsystemBase implements SwerveIO {
     }
 
   @Override
+  public double getYaw() {
+    return pigeon.getYaw().getValueAsDouble();
+  }
+
+  @Override
+  public double getPitch() {
+      return pigeon.getPitch().getValueAsDouble();
+  }
+
+  @Override
+  public double getRoll() {
+      return pigeon.getRoll().getValueAsDouble();
+  }
+
+  @Override
   public void updateInputs(SwerveInputs inputs) {
     inputs.currentPose2d = getPose2d();
     inputs.currentPose3d = getPose3d();
@@ -361,5 +376,22 @@ public class SwerveSubsystem extends SubsystemBase implements SwerveIO {
       inputs.currentCanCodersPosition = cancoderPos;
       inputs.chassisSpeeds = getRobotRelativeSpeeds();
     }
+  }
+
+  @Override
+  public Command driveAnguladoCommand(DoubleSupplier X, DoubleSupplier Y,
+                                      DoubleSupplier headingX, DoubleSupplier headingY) {
+    return run(() -> {
+      Translation2d scaled = SwerveMath.scaleTranslation(
+          new Translation2d(X.getAsDouble(), Y.getAsDouble()), 0.8);
+
+      ChassisSpeeds speeds = swerveDrive.swerveController.getTargetSpeeds(
+          scaled.getX(), scaled.getY(),
+          headingX.getAsDouble(), headingY.getAsDouble(),
+          swerveDrive.getOdometryHeading().getRadians(),
+          swerveDrive.getMaximumChassisVelocity());
+
+          swerveDrive.driveFieldOriented(speeds);
+    });
   }
 }

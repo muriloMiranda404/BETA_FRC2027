@@ -1,111 +1,81 @@
 package frc.robot.subsystems.mechanism.intake;
 
-import static edu.wpi.first.units.Units.Volts;
 import org.littletonrobotics.junction.Logger;
 
-import edu.wpi.first.wpilibj.DutyCycleEncoder;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import static frc.frc_java9485.constants.mechanisms.IntakeConsts.Motors.*;
-import static frc.frc_java9485.constants.mechanisms.IntakeConsts.Encoder.*;
-import static frc.frc_java9485.constants.mechanisms.IntakeConsts.PID.*;
+import frc.frc_java9485.constants.mechanisms.IntakeConsts;
+import frc.frc_java9485.constants.utils.LoggerConstants;
 
-import frc.frc_java9485.motors.rev.SparkMaxMotor;
-import frc.frc_java9485.motors.rev.io.SparkInputsAutoLogged;
-import frc.frc_java9485.utils.TunableControls.TunableProfiledController;
+public class IntakeSubsystem extends SubsystemBase{
 
-public class IntakeSubsystem extends SubsystemBase implements IntakeIO {
-  private static IntakeSubsystem m_instance;
+  private IntakeIO io;
 
-  private final SparkMaxMotor pivot;
-  private final SparkMaxMotor catchBall;
-
-  private final DutyCycleEncoder pivotEncoder;
-
-  private final TunableProfiledController controller;
-
-  private double pivotSetpoint = 0;
+  private SystemState currentState = SystemState.SAVED;
+  private WantedState wantedState = WantedState.SAVED;
 
   private final IntakeInputsAutoLogged inputs;
-  private final SparkInputsAutoLogged pivotInputs;
-  private final SparkInputsAutoLogged catchBallInputs;
 
-  public static IntakeSubsystem getInstance() {
-    if (m_instance == null) m_instance = new IntakeSubsystem();
-    return m_instance;
-  }
+  public IntakeSubsystem(IntakeIO io){
+    this.io = io;
 
-  private IntakeSubsystem() {
-    pivot = new SparkMaxMotor(PIVOT_ID, "Pivot motor");
-    catchBall = new SparkMaxMotor(CATCH_BALL_ID, "Catch Fuel motor");
-
-    controller = new TunableProfiledController(PIVOT_CONSTANTS);
-
-    pivotEncoder = new DutyCycleEncoder(ENCODER_CHANNEL);
-    pivotEncoder.setInverted(ENCODER_INVERTED);
-
-    inputs = new IntakeInputsAutoLogged();
-    pivotInputs = new SparkInputsAutoLogged();
-    catchBallInputs = new SparkInputsAutoLogged();
-
-    configureIntakeMotor();
-  }
-
-  private void configureIntakeMotor(){
-    pivot.setCurrentLimit(30);
-    pivot.burnFlash();
+    this.inputs = new IntakeInputsAutoLogged();
   }
 
   @Override
   public void periodic() {
-    updateInputs(inputs);
-    Logger.processInputs("Mechanism/Intake inputs", inputs);
+    io.processInputs(inputs);
+    Logger.processInputs(LoggerConstants.MECHANISM_KEY+"Intake/", inputs);
 
-    pivot.updateInputs(pivotInputs);
-    catchBall.updateInputs(catchBallInputs);
+    this.currentState = handleTransition();
+    this.executeActions();
   }
 
-  @Override
-  public void catchFuel(double speed) {
-    catchBall.setSpeed(speed);
+  private SystemState handleTransition(){
+    return SystemState.valueOf(wantedState.name());
   }
 
-  @Override
-  public void enablePivot(double setpoint) {
-    this.pivotSetpoint = setpoint;
-    double angle = pivotEncoder.get() * 360.0;
-    controller.setGoal(setpoint);
+  private void executeActions(){
+    switch (currentState) {
+      case COLLECTING:
+          io.setColectOutput(IntakeConsts.Setpoint.COLLECT_FUEL_SPEED);
+          io.setPivotPosition(IntakeConsts.Setpoint.SETPOINT_DOWN);
+        break;
 
-    double output = controller.calculate(angle);
+      case SAVED:
+          io.stopColect();
+          io.setPivotPosition(IntakeConsts.Setpoint.SETPOINT_UP);
+        break;
 
-    pivot.setVoltage(-output);
+      case EJECTING:
+          io.setColectOutput(-IntakeConsts.Setpoint.COLLECT_FUEL_SPEED);
+          io.setPivotPosition(IntakeConsts.Setpoint.SETPOINT_DOWN);
+        break;
+      default:
+        break;
+    }
   }
 
-  @Override
-  public double getCatchFuelSpeed() {
-    return catchBall.getRPM();
+  public WantedState getWantedState(){
+    return wantedState;
   }
 
-  @Override
-  public boolean isColecting() {
-    return getCatchFuelSpeed() > 0.1;
+  public SystemState getSystemState(){
+    return currentState;
   }
 
-  @Override
-  public double getPivotVoltage() {
-      return pivot.getVoltage();
+  public void setWantedState(WantedState state){
+    this.wantedState = state;
   }
 
-  @Override
-  public boolean atSetpoint() {
-      return controller.atGoal();
+  private enum SystemState{
+    COLLECTING,
+    EJECTING,
+    SAVED
   }
 
-  @Override
-  public void updateInputs(IntakeInputs inputs) {
-    inputs.isColecting = isColecting();
-    inputs.catchFuelSpeed = getCatchFuelSpeed();
-    inputs.pivotVolts = Volts.of(getPivotVoltage());
-    inputs.pivotAngle = pivotEncoder.get()*360.0;
-    inputs.pivotSetpoint = pivotSetpoint;
+  public enum WantedState{
+    COLLECTING,
+    EJECTING,
+    SAVED
   }
 }

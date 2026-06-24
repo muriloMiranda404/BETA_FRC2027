@@ -7,6 +7,7 @@ import static edu.wpi.first.units.Units.RPM;
 import static edu.wpi.first.units.Units.Rotations;
 import static edu.wpi.first.units.Units.Seconds;
 import static edu.wpi.first.units.Units.Volts;
+import static frc.frc_java9485.constants.utils.LoggerConstants.*;
 
 import java.util.function.Supplier;
 
@@ -24,36 +25,48 @@ import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
-import edu.wpi.first.math.controller.ElevatorFeedforward;
-import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
-import static frc.frc_java9485.constants.LoggerConstants.*;
-
 import frc.frc_java9485.motors.rev.io.SparkIO;
 import frc.frc_java9485.motors.rev.io.SparkInputsAutoLogged;
-import frc.frc_java9485.utils.TunableControls.ControlConstants;
 
 public class SparkMaxMotor implements SparkIO{
   private final SparkMax motor;
   private final SparkMaxConfig config;
+  private final String name;
+  private final boolean usingAlternateEncoder;
 
   private double speed = 0;
   private double porcentage = 0;
   private boolean inverted = false;
-  private IdleMode currentIdleMode;
+  private IdleMode lastIdleMode = null;
 
-  private final String name;
+  private double targetPercentage;
+  private double targetPosition;
+  private double taregtSpeed;
 
-  public SparkMaxMotor(int id, String name) {
+  public SparkMaxMotor(int id, String name){
+    this(id, false, name);
+  }
+
+  public SparkMaxMotor(int id, Boolean usingAlternateEncoder, String name) {
     this.motor = new SparkMax(id, MotorType.kBrushless);
     this.config = new SparkMaxConfig();
-
+    this.usingAlternateEncoder = usingAlternateEncoder;
     this.name = name;
 
     cleanStickFaults();
-    motor.getDeviceId();
+    this.setAlternateEndoder(usingAlternateEncoder);
+  }
+
+  private void setAlternateEndoder(boolean usingAlternateEncoder){
+    if(usingAlternateEncoder){
+      this.config.closedLoop.feedbackSensor(FeedbackSensor.kAlternateOrExternalEncoder);
+      this.config.alternateEncoder.countsPerRevolution(8192);
+    }
+
+    this.config.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
   }
 
   @Override
@@ -73,19 +86,23 @@ public class SparkMaxMotor implements SparkIO{
   }
 
   @Override
-  public void setSpeed(double speeds) {
-    if (speeds != speed) {
-      motor.set(speeds);
-      this.speed = speeds;
-    }
+  public double getRate() {
+      if(usingAlternateEncoder){
+        return motor.getAlternateEncoder().getVelocity();
+      }
+      return motor.getEncoder().getVelocity();
   }
 
   @Override
-  public void setPorcentage(double porcentage) {
-    if (porcentage != this.porcentage) {
-      this.porcentage = porcentage;
-      motor.set(porcentage);
+  public void setSpeed(double speeds) {
+    if (speeds != this.targetPercentage) {
+      this.motor
+          .getClosedLoopController()
+          .setSetpoint(speeds, ControlType.kVelocity);
     }
+    this.targetPercentage = speeds;
+    this.targetPosition = Double.NaN;
+    this.taregtSpeed = Double.NaN;
   }
 
   @Override
@@ -111,6 +128,31 @@ public class SparkMaxMotor implements SparkIO{
   }
 
   @Override
+  public String getMotorName() {
+    return name;
+  }
+
+  @Override
+  public boolean atSetpoint() {
+      return getClosedLoopController().isAtSetpoint();
+  }
+
+  @Override
+  public int getDeviceId() {
+    return motor.getDeviceId();
+  }
+
+  @Override
+  public boolean isFollower() {
+    return motor.isFollower();
+  }
+
+  @Override
+  public boolean isUsingAlternateEncoder() {
+    return usingAlternateEncoder;
+  }
+
+  @Override
   public double getVoltage() {
     return motor.getBusVoltage();
   }
@@ -130,13 +172,13 @@ public class SparkMaxMotor implements SparkIO{
   }
 
   @Override
-  public void setVoltage(double voltage) {
-    motor.setVoltage(voltage);
-  }
-
-  @Override
   public void setVoltage(Voltage voltage) {
-    motor.setVoltage(voltage);
+    if (voltage.in(Volts) != this.targetPercentage) {
+      this.motor.set(voltage.in(Volts));
+    }
+    this.targetPercentage = voltage.in(Volts);
+    this.targetPosition = Double.NaN;
+    this.taregtSpeed = Double.NaN;
   }
 
   @Override
@@ -145,9 +187,14 @@ public class SparkMaxMotor implements SparkIO{
   }
 
   @Override
-  public void setIdleMode(IdleMode idleMode) {
-    this.currentIdleMode = idleMode;
-    config.idleMode(idleMode);
+  public void setIdleMode(boolean isBrake) {
+    IdleMode targetIdleMode = isBrake ? IdleMode.kBrake : IdleMode.kCoast;
+    if (lastIdleMode == targetIdleMode) {
+      return;
+    }
+    config.idleMode(targetIdleMode);
+    motor.configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    this.lastIdleMode = targetIdleMode;
   }
 
   @Override
@@ -163,7 +210,7 @@ public class SparkMaxMotor implements SparkIO{
 
   @Override
   public IdleMode getIdleMode() {
-      return currentIdleMode;
+      return lastIdleMode;
   }
 
   @Override
@@ -227,11 +274,6 @@ public class SparkMaxMotor implements SparkIO{
   }
 
   @Override
-  public void setClosedLoopFeedbackSensor(FeedbackSensor feedbackSensor) {
-    config.closedLoop.feedbackSensor(feedbackSensor);
-  }
-
-  @Override
   public void setClosedLoopFeedForward(double kA, double kV) {
     config.closedLoop.feedForward.kA(kA);
     config.closedLoop.feedForward.kV(kV);
@@ -241,23 +283,6 @@ public class SparkMaxMotor implements SparkIO{
   public void setClosedLoopPhysical(double kS, double kG) {
     config.closedLoop.feedForward.kS(kS);
     config.closedLoop.feedForward.kG(kG);
-  }
-
-  @Override
-  public void setClosedLoopControlConstants(ControlConstants constants) {
-    PIDController pid = constants.getPIDController();
-    ElevatorFeedforward ff = constants.getElevatorFeedforward();
-
-    config.closedLoop.pid(pid.getP(), pid.getI(), pid.getD());
-    config.closedLoop.feedForward.kA(ff.getKa());
-    config.closedLoop.feedForward.kV(ff.getKv());
-    config.closedLoop.feedForward.kS(ff.getKs());
-    config.closedLoop.feedForward.kG(ff.getKg());
-  }
-
-  @Override
-  public void setClosedLoopPID(PIDController pid) {
-      config.closedLoop.pid(pid.getP(), pid.getI(), pid.getD());
   }
 
   @Override

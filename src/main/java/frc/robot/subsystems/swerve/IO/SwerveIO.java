@@ -29,6 +29,9 @@ public interface SwerveIO {
     public SwerveModuleState[] moduleStates = {};
     public double[] currentCanCodersPosition = {0, 0, 0, 0};
     public ChassisSpeeds chassisSpeeds = new ChassisSpeeds();
+    public double Yaw = 0;
+    public double pitch = 0;
+    public double roll = 0;
   }
 
   public Pose2d getPose2d();
@@ -64,4 +67,13 @@ public interface SwerveIO {
   public void drive(Translation2d translation2d, double rotation, boolean fieldOriented);
 
   public void lock();
+
+  public double getYaw();
+
+  public double getPitch();
+
+  public double getRoll();
+
+  public Command driveAnguladoCommand(DoubleSupplier X, DoubleSupplier Y,
+                                      DoubleSupplier headingX, DoubleSupplier headingY);
 }

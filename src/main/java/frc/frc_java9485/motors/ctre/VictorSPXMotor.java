@@ -2,6 +2,7 @@ package frc.frc_java9485.motors.ctre;
 
 import static edu.wpi.first.units.Units.Celsius;
 import static edu.wpi.first.units.Units.Volts;
+import static frc.frc_java9485.constants.utils.LoggerConstants.*;
 
 import org.littletonrobotics.junction.Logger;
 
@@ -14,8 +15,6 @@ import edu.wpi.first.math.controller.PIDController;
 import frc.frc_java9485.motors.ctre.io.CtreMotorIO;
 import frc.frc_java9485.motors.ctre.io.CtreMotorInputsAutoLogged;
 import frc.frc_java9485.utils.TunableControls.ControlConstants;
-
-import static frc.frc_java9485.constants.LoggerConstants.*;
 
 public class VictorSPXMotor implements CtreMotorIO{
     private final VictorSPX motor;

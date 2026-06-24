@@ -13,20 +13,18 @@ public interface IntakeIO {
     public boolean isColecting = false;
     public double pivotAngle = 0;
     public double pivotSetpoint = 0;
+    public double porcentageColectSetpoint = 0;
+    public double voltageColectSetpoint = 0;
     public Voltage pivotVolts = Volts.of(0);
   }
 
-  public void catchFuel(double speed);
+  default void setColectVoltage(Voltage voltage){};
 
-  public double getCatchFuelSpeed();
+  default void setColectOutput(double porcentage){};
 
-  public void enablePivot(double setpoint);
+  default void setPivotPosition(double position){};
 
-  public void updateInputs(IntakeInputs inputs);
+  default void stopColect(){};
 
-  public boolean isColecting();
-
-  public double getPivotVoltage();
-
-  public boolean atSetpoint();
+  default void processInputs(IntakeInputsAutoLogged inputs){};
 }

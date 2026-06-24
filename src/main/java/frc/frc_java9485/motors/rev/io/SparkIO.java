@@ -9,18 +9,15 @@ import static edu.wpi.first.units.Units.Volts;
 import org.littletonrobotics.junction.AutoLog;
 
 import com.revrobotics.RelativeEncoder;
-import com.revrobotics.spark.FeedbackSensor;
 import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 
-import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
-import frc.frc_java9485.utils.TunableControls.ControlConstants;
 
 public interface SparkIO {
     @AutoLog
@@ -39,17 +36,21 @@ public interface SparkIO {
 
     final int maximumRetries = 5;
 
+    public String getMotorName();
+    public int getDeviceId();
+    public boolean isFollower();
+    public boolean isUsingAlternateEncoder();
+
     public void setSpeed(double speeds);
     public void setSetpoint(double setpoint, ControlType ctrl);
-    public void setPorcentage(double porcentage);
 
     public void followMotor(int id);
-    public void setVoltage(double voltage);
     public void setVoltage(Voltage voltage);
     public void cleanStickFaults();
     public void resetPositionByEncoder(double posisition);
 
     public double getRPM();
+    public double getRate();
     public double getVoltage();
     public double getCurrent();
     public double getPosition();
@@ -61,7 +62,7 @@ public interface SparkIO {
     public void updateInputs(SparkInputsAutoLogged inputs);
 
     public void setInverted(boolean invert);
-    public void setIdleMode(IdleMode idleMode);
+    public void setIdleMode(boolean isBrake);
 
     public void setRampRate(double ramp);
     public void setCurrentLimit(int current);
@@ -75,17 +76,15 @@ public interface SparkIO {
     public void setPositionConversionFactor(double factor);
 
     public void setClosedLoopPID(double kP, double kI, double kD);
-    public void setClosedLoopFeedbackSensor(FeedbackSensor sensor);
     public void setClosedLoopFeedForward(double kA, double kV);
     public void setClosedLoopPhysical(double kS, double kG);
-
-    public void setClosedLoopPID(PIDController pid);
-    public void setClosedLoopControlConstants(ControlConstants constants);
 
     public SparkClosedLoopController getClosedLoopController();
 
     public void resetConfigToDefault(Motor motor);
     public void burnFlash();
+
+    public boolean atSetpoint();
 
     public enum Motor {
         NEO_1,

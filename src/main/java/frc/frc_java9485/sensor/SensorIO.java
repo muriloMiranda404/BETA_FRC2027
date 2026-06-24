@@ -15,6 +15,4 @@ public interface SensorIO {
     public boolean isDetected();
 
     public boolean isInverted();
-
-    public void updateInputs(SensorInputs inputs);
 }

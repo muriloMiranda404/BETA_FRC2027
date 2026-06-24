@@ -5,7 +5,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
-import frc.frc_java9485.constants.JoystickConsts;
+import frc.frc_java9485.constants.utils.JoystickConsts;
 
 public class DriverJoystick implements DriverJoystickIO {
   private final CommandXboxController joystick;

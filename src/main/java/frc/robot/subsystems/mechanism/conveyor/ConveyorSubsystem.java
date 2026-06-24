@@ -1,103 +1,78 @@
 package frc.robot.subsystems.mechanism.conveyor;
 
-import frc.frc_java9485.motors.ctre.VictorSPXMotor;
-import frc.frc_java9485.motors.ctre.io.CtreMotorInputsAutoLogged;
-import frc.frc_java9485.sensor.DigitalSensor;
-import frc.frc_java9485.sensor.SensorInputsAutoLogged;
-
-import static frc.frc_java9485.constants.mechanisms.ConveyorConsts.Motor.*;
-import static frc.frc_java9485.constants.mechanisms.ConveyorConsts.Sensors.*;
-
 import org.littletonrobotics.junction.Logger;
 
-import com.ctre.phoenix.motorcontrol.can.VictorSPX;
-
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.frc_java9485.constants.utils.LoggerConstants;
 
-public class ConveyorSubsystem extends SubsystemBase implements ConveyorIO{
-    private static ConveyorSubsystem m_instance;
+public class ConveyorSubsystem extends SubsystemBase{
 
-    private final VictorSPX conveyor;
-    private final VictorSPXMotor conveyor2;
+    private final ConveyorIO io;
 
-    private final DigitalSensor homeSensor;
-    private final DigitalSensor limitSensor;
+    private WantedState wantedState = WantedState.STOPPED;
+    private SystemState currentState = SystemState.STOPPED;
 
-    private final SensorInputsAutoLogged homeAutoLogged;
-    private final SensorInputsAutoLogged limitAutoLogged;
+    private final ConveyorInputsAutoLogged inputs;
 
-    private final ConveyorInputsAutoLogged conveyorInputs;
-    private final CtreMotorInputsAutoLogged motorInputs;
+    public ConveyorSubsystem(ConveyorIO io){
+        this.io = io;
 
-    public static ConveyorSubsystem getInstance() {
-        if (m_instance == null) m_instance = new ConveyorSubsystem();
-        return m_instance;
+        this.inputs = new ConveyorInputsAutoLogged();
     }
 
-    private ConveyorSubsystem() {
-        conveyor = new VictorSPX(CONVEYOR_MOTOR_ID);
-        conveyor2 = new VictorSPXMotor(CONVEYOR_MOTOR_ID, "conveyor");
+    private SystemState handleTransition(){
+        return SystemState.valueOf(wantedState.name());
+    }
 
-        homeSensor = new DigitalSensor(HOME_SENSOR_ID, INVERT_HOME, "home sensor");
-        limitSensor = new DigitalSensor(LIMIT_SENSOR_ID, INVERT_LIMIT, "limit sensor");
+    public void setWantedState(WantedState state){
+        this.wantedState = state;
+    }
 
-        homeAutoLogged = new SensorInputsAutoLogged();
-        limitAutoLogged = new SensorInputsAutoLogged();
+    private void executeAction(){
+        switch (currentState) {
+            case STOPPED:
+                io.stop();
+            break;
 
-        motorInputs = new CtreMotorInputsAutoLogged();
-        conveyorInputs = new ConveyorInputsAutoLogged();
+            case WITHDRAWING:
+                io.runToMin();
+            break;
+
+            case EXPANDING:
+                io.runToMax();
+            break;
+
+            default:
+                break;
+        }
+    }
+
+    public boolean atHome(){
+        return io.atHome();
+    }
+
+    public boolean atLimit(){
+        return io.atLimit();
     }
 
     @Override
     public void periodic() {
-        updateInputs(conveyorInputs);
-        conveyor2.updateInputs(motorInputs);
-        Logger.processInputs("Mechanism/coveyor inputs", conveyorInputs);
+        io.processInputs(inputs);
+        Logger.processInputs(LoggerConstants.MECHANISM_KEY+"Conveyor/", inputs);
 
-        homeSensor.processInput(homeAutoLogged);
-        limitSensor.processInput(limitAutoLogged);
+        this.currentState = handleTransition();
+        this.executeAction();
     }
 
-    @Override
-    public void runConveyor(double speed) {
-        speed = MathUtil.clamp(speed, -MAX_SPEED, MAX_SPEED);
-
-        // Bloqueia movimento para trás se já está no home
-        if (speed < 0 && conveyorIsInHome()) {
-            stopConveyor();
-            return;
-        }
-
-        // Bloqueia movimento para frente se já está no limit
-        if (speed > 0 && conveyorInLimit()) {
-            stopConveyor();
-            return;
-        }
-
-        // conveyor.set(VictorSPXControlMode.PercentOutput, speed);
-        conveyor2.setSpeed(speed);
+    private enum SystemState{
+        EXPANDING,
+        WITHDRAWING,
+        STOPPED
     }
 
-    @Override
-    public void stopConveyor() {
-        // conveyor.set(VictorSPXControlMode.PercentOutput, 0);
-        conveyor2.stopMotor();
-    }
-
-    @Override
-    public boolean conveyorIsInHome() {
-        return homeSensor.isDetected();
-    }
-
-    @Override
-    public boolean conveyorInLimit() {
-        return limitSensor.isDetected();
-    }
-
-    @Override
-    public void updateInputs(ConveyorInputs inputs) {
-        inputs.atHome = conveyorIsInHome();
-        inputs.atLimit = conveyorInLimit();
+    public enum WantedState{
+        EXPANDING,
+        WITHDRAWING,
+        STOPPED
     }
 }
