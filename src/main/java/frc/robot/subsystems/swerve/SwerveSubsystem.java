@@ -40,6 +40,7 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.frc_java9485.constants.robot.RobotConsts.RobotModes;
+import frc.frc_java9485.joystick.driver.DriverJoystick;
 import frc.frc_java9485.motors.rev.io.SparkOdometryThread;
 import frc.frc_java9485.utils.MathUtils;
 import frc.robot.subsystems.swerve.IO.GyroIOInputsAutoLogged;
@@ -58,6 +59,7 @@ import swervelib.telemetry.SwerveDriveTelemetry.TelemetryVerbosity;
 
 public class SwerveSubsystem extends SubsystemBase implements SwerveIO {
   public static final Lock odometryLock = new ReentrantLock();
+  public final DriverJoystick controller = DriverJoystick.getInstance();
 
   private final SwerveDrive swerveDrive;
   private final SwerveDriveKinematics kinematics;
@@ -70,6 +72,8 @@ public class SwerveSubsystem extends SubsystemBase implements SwerveIO {
   private final PigeonIO pigeonIO;
 
   private final CANcoder[] encoders; // FL FR BL BR
+
+  private String state = "NUll";
 
   private SwerveDriveSimulation driveSimulator;
 
@@ -95,9 +99,13 @@ public class SwerveSubsystem extends SubsystemBase implements SwerveIO {
       SwerveDriveTelemetry.verbosity = TelemetryVerbosity.HIGH;
 
       swerveDrive = new SwerveParser(directory).createSwerveDrive(MAX_SPEED);
+      swerveDrive.setHeadingCorrection(true);
+      swerveDrive.setCosineCompensator(true);
+      swerveDrive.setAngularVelocityCompensation(true,
+                                                 false, 
+                                                 0.01);
+
       swerveDrive.setMotorIdleMode(false);
-      swerveDrive.setHeadingCorrection(false);
-      swerveDrive.setCosineCompensator(false);
 
       if (CURRENT_ROBOT_MODE == RobotModes.SIM) {
         isSimulation = true;
@@ -237,6 +245,29 @@ public class SwerveSubsystem extends SubsystemBase implements SwerveIO {
   @Override
   public void drive(Translation2d translation2d, double rotation, boolean fieldOriented) {
     swerveDrive.drive(translation2d, rotation, fieldOriented, false);
+  }
+
+  @Override
+  public double getAngularVelocity() {
+      return swerveDrive.getMaximumChassisAngularVelocity();
+  }
+
+  protected ChassisSpeeds inputsToChassisSpeeds(double xInput, double yInput) {
+    return new ChassisSpeeds(xInput * swerveDrive.getMaximumChassisVelocity(), yInput * swerveDrive.getMaximumChassisVelocity(), 0);
+  }
+
+  protected ChassisSpeeds inputsToChassisSpeeds(double xInput, double yInput, double AngularRate) {
+    return new ChassisSpeeds(xInput * swerveDrive.getMaximumChassisVelocity(), 
+                             yInput * swerveDrive.getMaximumChassisVelocity(), 
+                             AngularRate * swerveDrive.getMaximumChassisAngularVelocity());
+  }
+
+
+  public void driveRotating(boolean rotateRight) {
+      ChassisSpeeds desiredSpeeds = this.inputsToChassisSpeeds(controller.getLeftY(),
+          controller.getLeftX(), rotateRight ? -1.5 : 1.5);
+      this.state = "DRIVE_ALIGN_ANGLE_ROTATING_RIGHT?:" + Boolean.toString(rotateRight);
+      this.driveFieldOriented(desiredSpeeds);
   }
 
   @Override
