@@ -1,9 +1,9 @@
 package frc.robot.subsystems.swerve;
 
 public class StaticSwerve {
-    
+
     private static final SwerveSubsystem swerveSubsystem = SwerveSubsystem.getInstance();
-    
+
     public StaticSwerve(){}
 
     public static double getAngularVelocity(){
@@ -20,5 +20,9 @@ public class StaticSwerve {
 
     public static double getRoll(){
         return swerveSubsystem.getRoll();
+    }
+
+    public static void driveToDriverStation(){
+        swerveSubsystem.driveToNearestCoralStation();
     }
 }

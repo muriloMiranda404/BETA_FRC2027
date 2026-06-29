@@ -95,7 +95,7 @@ public class VisionSubsystem extends SubsystemBase implements VisionIO {
 
     @Override
     public void simulationPeriodic() {
-        Pose3d pose = SwerveSubsystem.getInstance().getPose3d();
+        Pose3d pose = new Pose3d(SwerveSubsystem.getInstance().getPose2d());
         Pose3d metersPose = new Pose3d(
             new Translation3d(
                 Meter.of(pose.getX()),

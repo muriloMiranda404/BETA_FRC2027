@@ -540,4 +540,9 @@ public class FieldConsts {
             return redPassingTranslations;
         }
     }
+
+        public static final Set<Integer> BLUE_HUB_TAG_IDS = Set.of(18, 19, 20, 21, 24, 25, 26, 27);
+        public static final Set<Integer> RED_HUB_TAG_IDS = Set.of(2, 3, 4, 5, 8, 9, 10, 11);
+        public static final Set<Integer> BLUE_CLIMB_TAG_IDS = Set.of(31, 32);
+        public static final Set<Integer> RED_CLIMB_TAG_IDS = Set.of(15, 16);
 }

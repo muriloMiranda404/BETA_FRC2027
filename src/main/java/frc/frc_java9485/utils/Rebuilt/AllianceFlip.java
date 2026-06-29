@@ -5,6 +5,7 @@ import static frc.frc_java9485.constants.utils.FieldElementsConst.FieldMeansured
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.wpilibj.DriverStation;
 
 public class AllianceFlip {
   private AllianceFlip() {}
@@ -14,6 +15,11 @@ public class AllianceFlip {
         FIELD_LENGTH_METERS - bluePose.getX(),
         bluePose.getY(),
         bluePose.getRotation().plus(Rotation2d.k180deg));
+  }
+
+  public static boolean shouldFlip() {
+    return DriverStation.getAlliance().isPresent()
+        && DriverStation.getAlliance().get() == DriverStation.Alliance.Red;
   }
 
   public static Pose2d flipPose2dToRedAndNormalize(Pose2d bluePose) {

@@ -4,7 +4,6 @@ import java.util.function.Supplier;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.RobotContainer;
 import frc.robot.RobotState;
 import frc.robot.subsystems.mechanism.conveyor.ConveyorIO;
 import frc.robot.subsystems.mechanism.conveyor.ConveyorSubsystem;
@@ -25,7 +24,6 @@ public class SuperStructure extends SubsystemBase{
     private final ConveyorSubsystem conveyor;
     private final ShooterSubsystem shooter;
     private final RobotState robotState;
-    private final RobotContainer container;
 
     private WantedState wantedState = WantedState.OFF;
     private SystemState currentState = SystemState.OFF;
@@ -36,8 +34,7 @@ public class SuperStructure extends SubsystemBase{
         this.intake = new IntakeSubsystem(io4);
         this.index = new IndexSubsystem(io5);
         this.conveyor = new ConveyorSubsystem(io6);
-        this.container = new RobotContainer();
-        this.robotState = container.getRobotState();
+        this.robotState = new RobotState();
     }
 
     @Override

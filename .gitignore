@@ -35,6 +35,8 @@
 *.out
 *.app
 
+advantageScope/
+
 ### Java ###
 # Compiled class file
 *.class

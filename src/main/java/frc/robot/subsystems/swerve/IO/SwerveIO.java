@@ -4,14 +4,13 @@ import com.ctre.phoenix6.hardware.Pigeon2;
 
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.numbers.N1;
-import edu.wpi.first.math.numbers.N4;
+import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj2.command.Command;
 
 import swervelib.simulation.ironmaple.simulation.drivesims.GyroSimulation;
@@ -25,26 +24,31 @@ public interface SwerveIO {
   @AutoLog
   public static class SwerveInputs{
     public Pose2d currentPose2d = new Pose2d();
-    public Pose3d currentPose3d = new Pose3d();
+    public Pose2d targetPose2d = new Pose2d();
     public SwerveModuleState[] moduleStates = {};
     public double[] currentCanCodersPosition = {0, 0, 0, 0};
     public ChassisSpeeds chassisSpeeds = new ChassisSpeeds();
-    public double Yaw = 0;
+    public double yaw = 0;
     public double pitch = 0;
     public double roll = 0;
   }
 
   public Pose2d getPose2d();
-  public Pose3d getPose3d();
 
   public Rotation2d getHeading2d();
   public Rotation3d getHeading3d();
 
-  public void resetOdometry(Pose2d pose);
-  public void resetOdometry(Pose3d pose);
+  default void resetOdometry(Pose2d pose){};
 
-  public void addVisionMeasurement(Pose3d visionMeasurement, double timestampSeconds);
-  public void addVisionMeasurement(Pose3d visionMeasurement, double timestampSeconds, Matrix<N4, N1> stdDevs);
+  default void addVisionMeasurement(Pose2d visionMeasurement, double timestampSeconds){};
+  default void addVisionMeasurement(Pose2d visionMeasurement, double timestampSeconds, Matrix<N3, N1> stdDevs){};
+  default void driveFieldOriented(ChassisSpeeds speed){};
+  default void driveToSupportPoint(){};
+
+  default void updateInputs(SwerveInputs inputs){};
+  default void drive(Translation2d translation2d, double rotation, boolean fieldOriented){};
+  default void lock(){};
+  default void resetDriveToPoseControllers(){};
 
   public Pigeon2 getPigeon();
   public GyroSimulation getGyroSimulation();
@@ -53,20 +57,14 @@ public interface SwerveIO {
 
   public ChassisSpeeds getRobotRelativeSpeeds();
 
-  public void driveFieldOriented(ChassisSpeeds speed);
-
   public boolean inAllianceZone();
+
+  public boolean atTargetPose();
 
   public Command getAutonomousCommand(String path, boolean altern);
 
   public Command driveCommand(
       DoubleSupplier x, DoubleSupplier y, DoubleSupplier omega, boolean fieldOriented);
-
-  public void updateInputs(SwerveInputs inputs);
-
-  public void drive(Translation2d translation2d, double rotation, boolean fieldOriented);
-
-  public void lock();
 
   public double getYaw();
 
