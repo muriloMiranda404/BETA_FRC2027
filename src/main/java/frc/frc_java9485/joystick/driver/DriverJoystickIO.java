@@ -34,4 +34,6 @@ public interface DriverJoystickIO {
   double getRightTrigger();
 
   double getLeftTrigger();
+
+  boolean notUsingJoystick();
 }

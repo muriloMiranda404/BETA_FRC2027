@@ -6,6 +6,7 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.frc_java9485.constants.utils.JoystickConsts;
+import frc.frc_java9485.utils.JoystickUtil;
 
 public class DriverJoystick implements DriverJoystickIO {
   private final CommandXboxController joystick;
@@ -138,6 +139,12 @@ public class DriverJoystick implements DriverJoystickIO {
   @Override
   public Trigger x() {
     return joystick.x();
+  }
+
+  @Override
+  public boolean notUsingJoystick() {
+    return JoystickUtil.inRange(getRightX(), -JoystickConsts.DRIVER_DEADBAND, JoystickConsts.DRIVER_DEADBAND)
+        && JoystickUtil.inRange(getRightY(), -JoystickConsts.DRIVER_DEADBAND, JoystickConsts.DRIVER_DEADBAND);
   }
 
   @Override
