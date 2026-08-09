@@ -36,20 +36,22 @@ import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.frc_java9485.constants.mechanisms.shooter.TurretConsts;
 import frc.frc_java9485.constants.robot.RobotConsts.RobotModes;
 import frc.frc_java9485.constants.utils.FieldElementsConst;
 import frc.frc_java9485.joystick.driver.DriverJoystick;
 import frc.frc_java9485.loggers.CustomDoubleLogger;
-import frc.frc_java9485.motors.rev.io.SparkOdometryThread;
-import frc.frc_java9485.utils.MathUtils;
+import frc.frc_java9485.utils.calc.MathUtils;
 import frc.frc_java9485.utils.Rebuilt.AllianceFlip;
-import frc.robot.subsystems.swerve.IO.GyroIOInputsAutoLogged;
-import frc.robot.subsystems.swerve.IO.PigeonIO;
+import frc.robot.RobotState;
 import frc.robot.subsystems.swerve.IO.SwerveIO;
 import frc.robot.subsystems.swerve.IO.SwerveInputsAutoLogged;
 import swervelib.SwerveDrive;
+import swervelib.SwerveDriveTest;
 import swervelib.math.SwerveMath;
 import swervelib.parser.SwerveParser;
 import swervelib.simulation.ironmaple.simulation.drivesims.COTS;
@@ -71,12 +73,10 @@ public class SwerveSubsystem extends SubsystemBase implements SwerveIO {
   private final SwerveDrive swerveDrive;
 
   private final SwerveInputsAutoLogged swerveInputs;
-  private final GyroIOInputsAutoLogged pigeonInputs;
 
   private final Pigeon2 pigeon;
-  private final PigeonIO pigeonIO;
 
-  private final CANcoder[] encoders; // FL FR BL BR
+  private final CANcoder[] encoders;
 
   private final CustomDoubleLogger targetVxDriveToPoseLogger = new CustomDoubleLogger("/Swerve/targetVxSpeed");
   private final CustomDoubleLogger targetVyDriveToPoseLogger = new CustomDoubleLogger("/Swerve/targetVySpeed");
@@ -86,14 +86,17 @@ public class SwerveSubsystem extends SubsystemBase implements SwerveIO {
 
   private SwerveDriveSimulation driveSimulator;
 
-  // private VisionSubsystem limelight;
-  // private VisionSubsystem raspberry;
+
 
   private SwerveModuleState states[];
 
   private static SwerveSubsystem mInstance;
 
   private final boolean isSimulation;
+
+
+  private static final Translation2d TURRET_PIVOT =
+      TurretConsts.Config.ROBOT_TO_TURRET_TRANSFORM.getTranslation().toTranslation2d();
 
   public static SwerveSubsystem getInstance() {
     if (mInstance == null) {
@@ -124,6 +127,7 @@ public class SwerveSubsystem extends SubsystemBase implements SwerveIO {
         driveSimulator.setEnabled(true);
 
         driveSimulator.config.gyroSimulationFactory = COTS.ofPigeon2();
+
       } else {
         isSimulation = false;
       }
@@ -138,26 +142,20 @@ public class SwerveSubsystem extends SubsystemBase implements SwerveIO {
 
       encoders =
           new CANcoder[] {
-            new CANcoder(CANCODER_MODULE1_ID), // FL
-            new CANcoder(CANCODER_MODULE2_ID), // FR
-            new CANcoder(CANCODER_MODULE3_ID), // BL
-            new CANcoder(CANCODER_MODULE4_ID)  // BR
+            new CANcoder(CANCODER_MODULE1_ID),
+            new CANcoder(CANCODER_MODULE2_ID),
+            new CANcoder(CANCODER_MODULE3_ID),
+            new CANcoder(CANCODER_MODULE4_ID)
           };
 
       pigeon = new Pigeon2(PIGEON2);
       pigeon.reset();
-      pigeonIO = new PigeonIO();
 
       swerveInputs = new SwerveInputsAutoLogged();
-      pigeonInputs = new GyroIOInputsAutoLogged();
 
       setupPathPlanner();
-      SparkOdometryThread.getInstance().start();
 
       this.lastDesiredJoystickAngle = AllianceFlip.shouldFlip() ? 0 : 180;
-
-      // limelight = VisionInstances.getLimelightInstance();
-      // raspberry = VisionInstances.getRaspberryInstance();
 
     } catch (Exception e) {
       throw new RuntimeException("Erro criando Swerve!!!!\n", e);
@@ -168,6 +166,13 @@ public class SwerveSubsystem extends SubsystemBase implements SwerveIO {
   public void periodic() {
     swerveDrive.updateOdometry();
     updateInputs(swerveInputs);
+
+    ChassisSpeeds fieldRelativeSpeeds =
+        ChassisSpeeds.fromRobotRelativeSpeeds(getRobotRelativeSpeeds(), getPose2d().getRotation());
+    RobotState.getInstance()
+        .addOdometryMeasurement(Timer.getFPGATimestamp(), getPose2d(), fieldRelativeSpeeds);
+    RobotState.getInstance().setRobotAttitude(getPitch(), getRoll());
+
     Logger.recordOutput("Target Joystick Angle", targetHeadingDegrees);
     Logger.recordOutput("last Desired Joystick Angle", lastDesiredJoystickAngle);
     Logger.processInputs("Swerve", swerveInputs);
@@ -235,7 +240,7 @@ public class SwerveSubsystem extends SubsystemBase implements SwerveIO {
   }
 
   @Override
-  public double getAngularVelocity() {
+  public double getMaxAngularVelocity() {
     return this.swerveDrive.getMaximumChassisAngularVelocity();
   }
 
@@ -297,11 +302,12 @@ public class SwerveSubsystem extends SubsystemBase implements SwerveIO {
     });
   }
 
-  protected void driveToPose(Pose2d targetPose){
+
+  public void driveToPose(Pose2d targetPose){
     this.driveToPose(targetPose, Double.POSITIVE_INFINITY);
   }
 
-  protected void driveToPose(Pose2d targetPose, double maxSpeed) {
+  public void driveToPose(Pose2d targetPose, double maxSpeed) {
     Pose2d currentPose = getPose2d();
     double targetXVelocity = this.moveToPoseXAxisPid.calculate(currentPose.getX(),
         (targetPose.getX()));
@@ -344,8 +350,8 @@ public class SwerveSubsystem extends SubsystemBase implements SwerveIO {
     this.targetHeadingDegrees = targetHeading.getDegrees();
 
     double omega = swerveDrive.getSwerveController().headingCalculate(
-        swerveDrive.getOdometryHeading().getRadians(), // heading atual
-        targetHeading.getRadians()); // heading-alvo
+        swerveDrive.getOdometryHeading().getRadians(),
+        targetHeading.getRadians());
 
     ChassisSpeeds locked = new ChassisSpeeds(
         speeds.vxMetersPerSecond,
@@ -355,13 +361,13 @@ public class SwerveSubsystem extends SubsystemBase implements SwerveIO {
     swerveDrive.driveFieldOriented(locked);
   }
 
-  //reefscape
+
   public void driveToNearestCoralStation() {
     Pose2d nearestCoralStationPose2D = this.getNearestCoralStationPose();
     this.driveToPose(nearestCoralStationPose2D);
   }
 
-  //reefscape
+
   private Pose2d getNearestCoralStationPose() {
     if (DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red) {
       if (getPose2d().getY() >= 4.0259) {
@@ -432,7 +438,8 @@ public class SwerveSubsystem extends SubsystemBase implements SwerveIO {
           });
 
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      DriverStation.reportError(
+          "Falha ao configurar o PathPlanner - autonomo desativado: " + e.getMessage(), e.getStackTrace());
     }
   }
 
@@ -474,6 +481,41 @@ public class SwerveSubsystem extends SubsystemBase implements SwerveIO {
 
     inputs.currentCanCodersPosition = encoderPos;
     inputs.chassisSpeeds = getRobotRelativeSpeeds();
+  }
+
+
+
+
+  public void driveAroundPoint(Translation2d translation, double rotation, Translation2d centerOfRotation) {
+    this.swerveDrive.drive(translation, rotation, true, false, centerOfRotation);
+  }
+
+
+  public Command pivotAroundTurretCommand(DoubleSupplier x, DoubleSupplier y, DoubleSupplier omega) {
+    return run(() -> {
+      double vx = Math.pow(x.getAsDouble(), 3) * swerveDrive.getMaximumChassisVelocity();
+      double vy = Math.pow(y.getAsDouble(), 3) * swerveDrive.getMaximumChassisVelocity();
+      double rot = omega.getAsDouble() * swerveDrive.getMaximumChassisAngularVelocity();
+
+      driveAroundPoint(new Translation2d(vx, vy), rot, TURRET_PIVOT);
+      Logger.recordOutput("Swerve/CenterOfRotation", TURRET_PIVOT);
+    });
+  }
+
+
+
+
+  public Command sysIdDriveCommand() {
+    return SwerveDriveTest.generateSysIdCommand(
+        SwerveDriveTest.setDriveSysIdRoutine(new SysIdRoutine.Config(), this, swerveDrive, 12.0, true),
+        3.0, 5.0, 3.0);
+  }
+
+
+  public Command sysIdAngleCommand() {
+    return SwerveDriveTest.generateSysIdCommand(
+        SwerveDriveTest.setAngleSysIdRoutine(new SysIdRoutine.Config(), this, swerveDrive),
+        3.0, 5.0, 3.0);
   }
 
   @Override

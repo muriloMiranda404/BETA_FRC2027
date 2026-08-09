@@ -17,7 +17,7 @@ public class CustomStringLogger extends StringLogEntry{
     super(DataLogManager.getLog(), name);
     this.name = name;
     CustomStringLogger.isFmsMatch = DriverStation.getMatchNumber() > 0;
-    this.loggedValue = "a"; // Set to something different than default for initial logging
+    this.loggedValue = "a";
     this.append("");
   }
 

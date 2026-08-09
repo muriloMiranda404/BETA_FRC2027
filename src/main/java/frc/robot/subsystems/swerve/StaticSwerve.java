@@ -6,8 +6,13 @@ public class StaticSwerve {
 
     public StaticSwerve(){}
 
-    public static double getAngularVelocity(){
-        return swerveSubsystem.getAngularVelocity();
+    public static double getMaxAngularVelocity(){
+        return swerveSubsystem.getMaxAngularVelocity();
+    }
+
+
+    public static double getMeasuredAngularVelocity(){
+        return swerveSubsystem.getRobotRelativeSpeeds().omegaRadiansPerSecond;
     }
 
     public static double getYaw(){

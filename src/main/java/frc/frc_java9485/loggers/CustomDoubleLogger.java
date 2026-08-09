@@ -17,7 +17,7 @@ public class CustomDoubleLogger extends DoubleLogEntry {
     super(DataLogManager.getLog(), name);
     this.name = name;
     CustomDoubleLogger.isFmsMatch = DriverStation.getMatchNumber() > 0;
-    this.loggedValue = 1; // Set to something different than default for initial logging
+    this.loggedValue = 1;
     this.append(0);
   }
 

@@ -1,0 +1,57 @@
+# Compila e roda os testes a cada push e pull request.
+#
+# A pegadinha aqui e o gradle.properties: ele fixa org.gradle.java.home no JDK do WPILib, que so
+# existe nas maquinas da equipe. O runner do GitHub nao tem esse caminho, entao cada invocacao do
+# Gradle sobrescreve a propriedade pela linha de comando (-D tem precedencia sobre o
+# gradle.properties) apontando para o JDK 17 que o setup-java instalou.
+
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Compilar e testar
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # O WPILib 2026 usa Java 17; o Temurin 17 e equivalente ao JDK que vem com o WPILib.
+      - name: Instalar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # O bit de execucao do gradlew costuma se perder no checkout em runners Linux.
+      - name: Permitir execucao do gradlew
+        run: chmod +x ./gradlew
+
+      # Roda antes do build: o build faz spotlessApply (formata sozinho), entao a checagem tem que
+      # vir primeiro para de fato reprovar codigo desformatado em vez de silenciosamente arruma-lo.
+      - name: Checar formatacao
+        run: ./gradlew spotlessCheck -Dorg.gradle.java.home="$JAVA_HOME"
+
+      - name: Compilar e testar
+        run: ./gradlew build -Dorg.gradle.java.home="$JAVA_HOME"
+
+      # Sem isso, uma falha de teste no CI vira "BUILD FAILED" sem dizer qual assercao quebrou.
+      - name: Publicar relatorio de testes
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-de-testes
+          path: |
+            build/reports/tests/test
+            build/test-results/test
+          retention-days: 14

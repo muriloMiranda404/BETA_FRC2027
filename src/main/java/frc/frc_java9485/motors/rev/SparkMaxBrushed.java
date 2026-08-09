@@ -64,9 +64,9 @@ public class SparkMaxBrushed implements SparkIO{
     if(usingAlternateEncoder){
       this.config.closedLoop.feedbackSensor(FeedbackSensor.kAlternateOrExternalEncoder);
       this.config.alternateEncoder.countsPerRevolution(8192);
+    } else {
+      this.config.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
     }
-
-    this.config.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
   }
 
   @Override
@@ -204,7 +204,7 @@ public class SparkMaxBrushed implements SparkIO{
 
   @Override
   public void setInverted(boolean invert) {
-      config.inverted(true);
+      config.inverted(invert);
       this.inverted = invert;
   }
 

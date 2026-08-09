@@ -67,9 +67,9 @@ public class SparkFlexMotor implements SparkIO{
     if(usingAlternateEncoder){
       this.config.closedLoop.feedbackSensor(FeedbackSensor.kAlternateOrExternalEncoder);
       this.config.externalEncoder.countsPerRevolution(8192);
+    } else {
+      this.config.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
     }
-
-    this.config.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
   }
 
   @Override
@@ -179,7 +179,7 @@ public class SparkFlexMotor implements SparkIO{
 
   @Override
   public void setInverted(boolean invert) {
-      config.inverted(true);
+      config.inverted(invert);
       this.inverted = invert;
   }
 

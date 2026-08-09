@@ -8,7 +8,7 @@ public interface FlyWheelIO {
     public static class FlyWheelIOInputs{
         public double averageSpeed = 0;
         public double speedSetpoint = 0;
-        public boolean atSetpoit = false;
+        public boolean atSetpoint = false;
         public boolean isShooting = false;
     }
 

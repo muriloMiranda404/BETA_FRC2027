@@ -1,61 +1,42 @@
 package frc.robot.subsystems.mechanism.index;
 
-import org.littletonrobotics.junction.Logger;
-
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.frc_java9485.bases.StateMachineMechanism;
 import frc.frc_java9485.constants.mechanisms.IndexConsts;
-import frc.frc_java9485.constants.utils.LoggerConstants;
 
-public class IndexSubsystem extends SubsystemBase{
 
-    private IndexIO io;
+public class IndexSubsystem extends StateMachineMechanism<IndexSubsystem.WantedState, IndexSubsystem.SystemState, IndexInputsAutoLogged> {
 
-    private SystemState currenState = SystemState.STOPPED;
-    private WantedState wantedState = WantedState.STOPPED;
-
-    private final IndexInputsAutoLogged inputs;
+    private final IndexIO io;
 
     public IndexSubsystem(IndexIO io){
+        super("Index", new IndexInputsAutoLogged(), WantedState.STOPPED, SystemState.STOPPED);
         this.io = io;
-
-        this.inputs = new IndexInputsAutoLogged();
     }
 
     @Override
-    public void periodic() {
+    protected void readInputs(IndexInputsAutoLogged inputs) {
         io.processInputs(inputs);
-        Logger.processInputs(LoggerConstants.MECHANISM_KEY+"Index/", inputs);
-
-        this.currenState = handleTransition();
-        executeActions();
     }
 
-    private SystemState handleTransition(){
-        return SystemState.valueOf(wantedState.name());
+    @Override
+    protected SystemState handleTransition(WantedState wanted){
+        return switch (wanted) {
+            case STOPPED -> SystemState.STOPPED;
+            case EJECTING -> SystemState.EJECTING;
+            case INDEXING -> SystemState.INDEXING;
+        };
     }
 
-    private void executeActions(){
-        switch (currenState) {
-            case STOPPED:
-                io.stopIndex();
-                break;
-
-            case EJECTING:
-                io.indexBalls(-IndexConsts.MAX_SPEED);
-                break;
-            case INDEXING:
-                io.indexBalls(IndexConsts.MAX_SPEED);
-                break;
-            default:
-                break;
+    @Override
+    protected void applyState(SystemState state, boolean stateChanged){
+        switch (state) {
+            case STOPPED -> io.stopIndex();
+            case EJECTING -> io.indexBalls(-IndexConsts.MAX_SPEED);
+            case INDEXING -> io.indexBalls(IndexConsts.MAX_SPEED);
         }
     }
 
-    public void setWantedState(WantedState state){
-        this.wantedState = state;
-    }
-
-    private enum SystemState{
+    public enum SystemState{
         STOPPED,
         EJECTING,
         INDEXING

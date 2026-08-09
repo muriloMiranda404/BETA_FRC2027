@@ -6,7 +6,7 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.frc_java9485.constants.utils.JoystickConsts;
-import frc.frc_java9485.utils.JoystickUtil;
+import frc.frc_java9485.joystick.util.JoystickUtil;
 
 public class DriverJoystick implements DriverJoystickIO {
   private final CommandXboxController joystick;
@@ -25,8 +25,8 @@ public class DriverJoystick implements DriverJoystickIO {
 
   @Override
   public double getPerfomanceByAlliance(double speed) {
-    var alliance = DriverStation.getAlliance().get();
-    if (DriverStation.getAlliance().isPresent() && alliance == Alliance.Blue) {
+
+    if (DriverStation.getAlliance().orElse(Alliance.Red) == Alliance.Blue) {
       return -speed;
     }
     return speed;

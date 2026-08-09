@@ -7,17 +7,11 @@ import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import frc.frc_java9485.constants.robot.RobotConsts;
-import frc.frc_java9485.utils.FieldLayout.FieldType;
+import frc.frc_java9485.utils.Rebuilt.FieldLayout.FieldType;
 
 import java.util.*;
 
-/**
- * Contains field geometry, coordinate positions, and alliance-relative pose lookups.
- *
- * <p>Provides the 2026 game field layout with AprilTag positions and getter methods to retrieve
- * alliance-specific robot waypoints, scoring positions, and sweep routes.
- * </p>
- */
+
 public class FieldConsts {
     public static final AprilTagFieldLayout FIELD_LAYOUT;
 
@@ -32,7 +26,7 @@ public class FieldConsts {
     public static final Translation3d RED_HUB = new Translation3d(11.915, 4.035, edu.wpi.first.math.util.Units.inchesToMeters(72));
     public static final Translation3d BLUE_HUB = new Translation3d(4.626, 4.035, edu.wpi.first.math.util.Units.inchesToMeters(72));
 
-    // TODO blue_left_point is on the right of the blue side in sim? Test and adjust coordinate so name is correct
+
     private static final Translation2d BLUE_LEFT_POINT_TO_PASS_TO = new Translation2d(4.0, 2.5);
     private static final Translation2d BLUE_RIGHT_POINT_TO_PASS_TO =
             new Translation2d(BLUE_LEFT_POINT_TO_PASS_TO.getX(), FIELD_WIDTH - BLUE_LEFT_POINT_TO_PASS_TO.getY());
@@ -41,7 +35,7 @@ public class FieldConsts {
     private static final Translation2d RED_RIGHT_POINT_TO_PASS_TO =
             new Translation2d(FIELD_LENGTH - BLUE_RIGHT_POINT_TO_PASS_TO.getX(), BLUE_LEFT_POINT_TO_PASS_TO.getY());
 
-    // Auto locations
+
     private static final Pose2d LEFT_FEED_PRELOAD_STARTING_POSE_BLUE =
             new Pose2d(4.5, 7.6, Rotation2d.fromDegrees(90.0));
     private static final Pose2d LEFT_FEED_PRELOAD_STARTING_POSE_RED = new Pose2d(
@@ -84,7 +78,7 @@ public class FieldConsts {
             Rotation2d.k180deg.plus(LEFT_SECOND_SWEEP_CENTERPOINT_BLUE.getRotation()));
 
     private static final Pose2d LEFT_SWEEP_EXIT_BLUE =
-            new Pose2d(6.3, 5.3, Rotation2d.fromDegrees(-135.0)); // only second pass in test auto
+            new Pose2d(6.3, 5.3, Rotation2d.fromDegrees(-135.0));
     private static final Pose2d LEFT_SWEEP_EXIT_RED = new Pose2d(
             FIELD_LENGTH - LEFT_SWEEP_EXIT_BLUE.getX(),
             FIELD_WIDTH - LEFT_SWEEP_EXIT_BLUE.getY(),
@@ -96,7 +90,7 @@ public class FieldConsts {
             FIELD_WIDTH - LEFT_TRENCH_ENTER_BLUE.getY(),
             Rotation2d.k180deg.plus(LEFT_TRENCH_ENTER_BLUE.getRotation()));
 
-    // first and second for scoring rotation
+
     private static final Pose2d LEFT_FIRST_BUMP_SCORE_BLUE = new Pose2d(2.6, 5.6, Rotation2d.fromDegrees(-90.0));
     private static final Pose2d LEFT_FIRST_BUMP_SCORE_RED = new Pose2d(
             FIELD_LENGTH - LEFT_FIRST_BUMP_SCORE_BLUE.getX(),
@@ -117,7 +111,7 @@ public class FieldConsts {
             FIELD_WIDTH - LEFT_SECOND_SWEEP_CURVEPOINT_BLUE.getY(),
             Rotation2d.k180deg.plus(LEFT_SECOND_SWEEP_CURVEPOINT_BLUE.getRotation()));
 
-    // RIGHT
+
     private static final Pose2d RIGHT_SECOND_SWEEP_CURVEPOINT_BLUE = new Pose2d(
             LEFT_SECOND_SWEEP_CURVEPOINT_BLUE.getX(),
             FIELD_WIDTH - LEFT_SECOND_SWEEP_CURVEPOINT_BLUE.getY(),
@@ -217,7 +211,7 @@ public class FieldConsts {
             FIELD_WIDTH - RIGHT_FIRST_SWEEP_ENTRY_BLUE.getY(),
             Rotation2d.k180deg.plus(RIGHT_FIRST_SWEEP_ENTRY_BLUE.getRotation()));
 
-    // CENTER
+
     private static final Pose2d CENTER_STARTING_POSE_BLUE = new Pose2d(3.6, 4.0, Rotation2d.kZero);
     private static final Pose2d CENTER_STARTING_POSE_RED = new Pose2d(
             FIELD_LENGTH - CENTER_STARTING_POSE_BLUE.getX(),
@@ -272,15 +266,15 @@ public class FieldConsts {
     static List<Translation2d> redPassingTranslations =
             Arrays.asList(RED_LEFT_POINT_TO_PASS_TO, RED_RIGHT_POINT_TO_PASS_TO);
 
-    /** Enumeration of known fixed translation locations on the field (trenches, uprights). */
+
     public enum KnownTranslations {
         LEFT_TRENCH,
         RIGHT_TRENCH,
-        LEFT_UPRIGHT, // Uprights are not centered to hub on the field
+        LEFT_UPRIGHT,
         RIGHT_UPRIGHT,
     }
 
-    /** Map of known translation points for the blue alliance. */
+
     public static final Map<KnownTranslations, Translation2d> blueKnownTranslationsMap =
             new EnumMap<>(KnownTranslations.class);
 
@@ -303,7 +297,7 @@ public class FieldConsts {
                         2.76));
     }
 
-    /** Map of known translation points for the red alliance. */
+
     public static final Map<KnownTranslations, Translation2d> redKnownTranslationsMap =
             new EnumMap<>(KnownTranslations.class);
 
@@ -505,22 +499,12 @@ public class FieldConsts {
         return alliance == DriverStation.Alliance.Blue ? DEPOT_NZ_CENTER_BLUE : DEPOT_NZ_CENTER_RED;
     }
 
-    /**
-     * Check if the current alliance is blue.
-     *
-     * @return true if the current alliance is blue, false if red, defaults to blue if not set
-     */
+
     public static boolean isBlueAlliance() {
         return DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Blue;
     }
 
-    /**
-     * Get the 3D position of an AprilTag by its id.
-     *
-     * @param id the AprilTag id
-     * @return the 3D pose of the tag on the field
-     * @throws RuntimeException if the tag id is not recognized in the field layout
-     */
+
     public static Pose3d getTagPose(int id) {
         return FIELD_LAYOUT.getTagPose(id).orElseThrow(() -> {
             final String message = String.format("getTagPose called for unexpected tag %d", id);
@@ -528,11 +512,7 @@ public class FieldConsts {
         });
     }
 
-    /**
-     * Get the possible passing target translations for the current alliance.
-     *
-     * @return a collection of 2D translations where pass shots can be scored
-     */
+
     public static Collection<Translation2d> getPossibleTranslationsToPassTo() {
         if (isBlueAlliance()) {
             return bluePassingTranslations;

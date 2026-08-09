@@ -15,7 +15,7 @@ import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
-import frc.frc_java9485.utils.TunableControls.ControlConstants;
+import frc.frc_java9485.utils.control.TunableControls.ControlConstants;
 
 public interface CtreMotorIO {
     @AutoLog

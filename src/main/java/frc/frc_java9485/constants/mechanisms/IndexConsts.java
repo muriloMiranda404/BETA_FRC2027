@@ -6,5 +6,5 @@ public class IndexConsts {
 
     public static final double MAX_SPEED = 0.4;
 
-    public static final int INDEX_CURRENT_LIMIT = 40; //temporário
+    public static final int INDEX_CURRENT_LIMIT = 40;
 }

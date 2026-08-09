@@ -94,25 +94,25 @@ public class RobotContainer {
   }
 
   private void configureDriveBindings(){
-    //drive
+
     driverJoystick.getLeftBack().onTrue(new ResetPigeon());
   }
 
   private void configureMechanismBindings() {
-    //mecanismos
+
     mechanismJoystick.leftBumper().onTrue(Commands.runOnce(() -> superStructure.alternActions(Actions.OPEN_INTAKE), superStructure));
 
     mechanismJoystick.getUpPOV().whileTrue(
-      Commands.run(() -> turret.turnToMapSetpoint(0), turret) // torreta
-      .alongWith(Commands.run(() -> turret.turnHoodFromSetpoint(0.2, // capuz
-                                                                2500,  //RPM
+      Commands.run(() -> turret.turnToMapSetpoint(0), turret)
+      .alongWith(Commands.run(() -> turret.turnHoodFromSetpoint(0.2,
+                                                                2500,
                                                                 () -> mechanismJoystick.getRightTrigger() > 0)))
     );
 
     mechanismJoystick.getRightPOV().whileTrue(
-      Commands.run(() -> turret.turnToMapSetpoint(-16), turret) // torreta
-      .alongWith(Commands.run(() -> turret.turnHoodFromSetpoint(0.5, // capuz
-                                                                2820, // RPM
+      Commands.run(() -> turret.turnToMapSetpoint(-16), turret)
+      .alongWith(Commands.run(() -> turret.turnHoodFromSetpoint(0.5,
+                                                                2820,
                                                                 () -> mechanismJoystick.getRightTrigger() > 0)))
     );
 
@@ -121,9 +121,9 @@ public class RobotContainer {
     );
 
     mechanismJoystick.getLeftPOV().whileTrue(
-      Commands.run(() -> turret.turnToMapSetpoint(MAX_TURN_POSITION), turret) // torreta
-      .alongWith(Commands.run(() -> turret.turnHoodFromSetpoint(MAX_POSITION, // capuz
-                                                                3000, // RPM
+      Commands.run(() -> turret.turnToMapSetpoint(MAX_TURN_POSITION), turret)
+      .alongWith(Commands.run(() -> turret.turnHoodFromSetpoint(MAX_POSITION,
+                                                                3000,
                                                                 () -> mechanismJoystick.getRightTrigger() > 0)))
     );
 
@@ -138,12 +138,11 @@ public class RobotContainer {
     mechanismJoystick.b().onTrue(Commands.runOnce(() -> superStructure.alternActions(Actions.CLOSE_CONVEYOR), superStructure))
     .onFalse(Commands.runOnce(() -> superStructure.alternActions(Actions.LOCK_CONVEYOR), superStructure));
 
-    //remapear controle
-    // mechanismJoystick.backRight().whileTrue(Commands.run(() -> superStructure.alternActions(Actions.SPELL_FUELS), superStructure));
+
   }
 
   private void configureSimBindings() {
-    //drive
+
     driverJoystick.getLeftBack().onTrue(new ResetSimGyro());
   }
 

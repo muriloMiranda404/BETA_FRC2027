@@ -1,7 +1,7 @@
 package frc.frc_java9485.constants.robot;
 
 import edu.wpi.first.wpilibj.RobotBase;
-import frc.frc_java9485.utils.FieldLayout.FieldType;
+import frc.frc_java9485.utils.Rebuilt.FieldLayout.FieldType;
 
 public class RobotConsts {
     public static final RobotModes SIM_MODE = RobotModes.SIM;
@@ -11,6 +11,9 @@ public class RobotConsts {
     public static final FieldType currentFieldType = FieldType.Welded;
 
     public static final String LOGS_PATH = "/home/lvuser/logs";
+
+
+    public static final boolean USE_COMPRESSED_LOGS = false;
     public static final String SPARK_ODOMETRY_THREAD_PATH = "Spark Odometry Thread";
 
     public static enum RobotModes {

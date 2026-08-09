@@ -47,7 +47,7 @@ public final class DriveConsts {
   public static LoggedPathPlannerPIDConstants SIM_ROTATION_PID =
     new LoggedPathPlannerPIDConstants("PathPlanner/Tuning/SIM Rotation", SIM_ROTATION_kP, SIM_ROTATION_kI, SIM_ROTATION_kD);
 
-  public static final int ODOMETRY_FREQUENCY = 100; //HZ
+  public static final int ODOMETRY_FREQUENCY = 100;
 
   public static final double MAX_SPEED = 4.0;
   public static final boolean FIELD_ORIENTED = true;

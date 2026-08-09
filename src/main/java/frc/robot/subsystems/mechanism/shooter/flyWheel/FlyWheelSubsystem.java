@@ -1,37 +1,24 @@
 package frc.robot.subsystems.mechanism.shooter.flyWheel;
 
-import org.littletonrobotics.junction.Logger;
+import frc.frc_java9485.bases.FlywheelMechanism;
+import frc.frc_java9485.constants.mechanisms.shooter.FlyWheelConsts;
 
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.frc_java9485.constants.utils.LoggerConstants;
 
-public class FlyWheelSubsystem extends SubsystemBase {
+public class FlyWheelSubsystem extends FlywheelMechanism<FlyWheelSubsystem.WantedState, FlyWheelSubsystem.SystemState, FlyWheelIOInputsAutoLogged> {
 
     private final FlyWheelIO io;
-    private final FlyWheelIOInputsAutoLogged inputs;
-
-    private WantedState wantedState = WantedState.OFF;
-    private SystemState currentState = SystemState.OFF;
 
     private double shootingRPM = 0.0;
     private double passingRPM = 0.0;
 
     public FlyWheelSubsystem(FlyWheelIO io) {
+        super("Fly Wheels",
+              new FlyWheelIOInputsAutoLogged(),
+              WantedState.OFF,
+              SystemState.OFF,
+              FlyWheelConsts.Setpoint.TOLERANCE_RPM,
+              FlyWheelConsts.Setpoint.SPUN_UP_DEBOUNCE_SEC);
         this.io = io;
-        this.inputs = new FlyWheelIOInputsAutoLogged();
-    }
-
-    @Override
-    public void periodic() {
-        io.processInputs(inputs);
-        Logger.processInputs(LoggerConstants.MECHANISM_KEY + "Fly Wheels/", inputs);
-
-        currentState = handleTransition();
-        executeActions();
-    }
-
-    public void setWantedState(WantedState state) {
-        this.wantedState = state;
     }
 
     public void setShootingRPM(double rpm) {
@@ -42,19 +29,40 @@ public class FlyWheelSubsystem extends SubsystemBase {
         this.passingRPM = rpm;
     }
 
-    private SystemState handleTransition() {
-        return switch (wantedState) {
+    @Override
+    public double getMeasuredRPM() {
+        return inputs.averageSpeed;
+    }
+
+    @Override
+    protected void readInputs(FlyWheelIOInputsAutoLogged inputs) {
+        io.processInputs(inputs);
+    }
+
+    @Override
+    protected SystemState handleTransition(WantedState wanted) {
+        return switch (wanted) {
             case SHOOTING -> SystemState.SHOOTING;
             case PASSING -> SystemState.PASSING;
             case OFF -> SystemState.OFF;
         };
     }
 
-    private void executeActions() {
-        switch (currentState) {
-            case SHOOTING -> io.setFlyWheelSpeed(shootingRPM);
-            case PASSING -> io.setFlyWheelSpeed(passingRPM);
-            case OFF -> io.stop();
+    @Override
+    protected void applyState(SystemState state, boolean stateChanged) {
+        switch (state) {
+            case SHOOTING -> {
+                setSetpointRPM(shootingRPM);
+                io.setFlyWheelSpeed(shootingRPM);
+            }
+            case PASSING -> {
+                setSetpointRPM(passingRPM);
+                io.setFlyWheelSpeed(passingRPM);
+            }
+            case OFF -> {
+                setSetpointRPM(0.0);
+                io.stop();
+            }
         }
     }
 

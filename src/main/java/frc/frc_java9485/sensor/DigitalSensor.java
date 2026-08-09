@@ -12,13 +12,10 @@ public class DigitalSensor implements SensorIO{
     private final boolean inverted;
     private final String identification;
 
-    private final SensorInputsAutoLogged sensorInputsAutoLogged;
-
     public DigitalSensor(int input, boolean inverted, String identification){
         this.sensor = new DigitalInput(input);
         this.inverted = inverted;
         this.identification = identification;
-        this.sensorInputsAutoLogged = new SensorInputsAutoLogged();
     }
 
     public DigitalSensor(int input, String identification){
@@ -27,8 +24,8 @@ public class DigitalSensor implements SensorIO{
 
     @Override
     public void processInput(SensorInputsAutoLogged sensorInputs) {
-        sensorInputsAutoLogged.detected = isDetected();
-        sensorInputsAutoLogged.inverted = inverted;
+        sensorInputs.detected = isDetected();
+        sensorInputs.inverted = inverted;
 
         Logger.processInputs(DIGITAL_SENSOR_KEY + identification, sensorInputs);
     }

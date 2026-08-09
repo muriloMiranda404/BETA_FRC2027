@@ -4,7 +4,7 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 
 public interface MechanismJoystickIO {
 
-  public Trigger a(); // travar
+  public Trigger a();
 
   public Trigger b();
 

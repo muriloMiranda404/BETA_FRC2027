@@ -17,7 +17,7 @@ public class CustomIntegerLogger extends IntegerLogEntry{
     super(DataLogManager.getLog(), name);
     this.name = name;
     CustomIntegerLogger.isFmsMatch = DriverStation.getMatchNumber() > 0;
-    this.loggedValue = 1; // Set to something different than default for initial logging
+    this.loggedValue = 1;
     this.append(0);
   }
 

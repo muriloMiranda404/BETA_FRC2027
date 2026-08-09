@@ -90,6 +90,11 @@ dependencies {
     nativeRelease wpi.java.vendor.jniRelease(wpi.platforms.desktop)
     simulationRelease wpi.sim.enableRelease()
 
+    // LZMA2/XZ compression for the .wpilogxz log format (frc_java9485.utils.logger.wpilogxz).
+    // Pinned to 1.9 because that is what is already resolved in the local Gradle cache, so an
+    // offline build keeps working.
+    implementation 'org.tukaani:xz:1.9'
+
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 

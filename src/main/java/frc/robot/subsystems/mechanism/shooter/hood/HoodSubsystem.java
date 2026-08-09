@@ -1,65 +1,75 @@
 package frc.robot.subsystems.mechanism.shooter.hood;
 
-import org.littletonrobotics.junction.Logger;
+import frc.frc_java9485.bases.ServoMechanism;
+import frc.frc_java9485.constants.mechanisms.shooter.HoodConsts;
 
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.frc_java9485.constants.utils.LoggerConstants;
 
-public class HoodSubsystem extends SubsystemBase {
+public class HoodSubsystem extends ServoMechanism<HoodSubsystem.WantedState, HoodSubsystem.SystemState, HoodIOInputsAutoLogged> {
 
-    private static final double SETPOINT_TOLERANCE_DEG = 0.5;
+    private static final double SETPOINT_TOLERANCE = 0.05;
 
     private final HoodIO io;
-    private final HoodIOInputsAutoLogged inputs;
-
-    private WantedState wantedState = WantedState.OFF;
-    private SystemState currentState = SystemState.OFF;
-
-    private double hoodAngleDeg = 0.0;
 
     public HoodSubsystem(HoodIO io) {
+        super("Hood",
+              new HoodIOInputsAutoLogged(),
+              WantedState.OFF,
+              SystemState.OFF,
+              HoodConsts.Setpoint.MIN_POSITION,
+              HoodConsts.Setpoint.MAX_POSITION,
+              SETPOINT_TOLERANCE);
         this.io = io;
-        this.inputs = new HoodIOInputsAutoLogged();
+    }
+
+
+    public void setHoodPosition(double position) {
+        setSetpoint(position);
     }
 
     @Override
-    public void periodic() {
+    public double getMeasuredPosition() {
+        return inputs.hoodPosition;
+    }
+
+    @Override
+    protected void readInputs(HoodIOInputsAutoLogged inputs) {
         io.processInputs(inputs);
-        Logger.processInputs(LoggerConstants.MECHANISM_KEY + "Hood/", inputs);
-
-        currentState = handleTransition();
-        executeActions();
     }
 
-    public void setWantedState(WantedState state) {
-        this.wantedState = state;
+
+    @Override
+    protected boolean atHomeSensor() {
+        return inputs.atHome;
     }
 
-    public void setHoodAngle(double angleDeg) {
-        this.hoodAngleDeg = Math.max(0.0, Math.min(3.5, angleDeg));
+    @Override
+    protected void onReachedHome() {
+        io.resetHood();
     }
 
-    public boolean atSetpoint() {
-        return Math.abs(inputs.hoodAngleDeg - hoodAngleDeg) < SETPOINT_TOLERANCE_DEG;
-    }
-
-    public SystemState getCurrentState() {
-        return currentState;
-    }
-
-    private SystemState handleTransition() {
-        return switch (wantedState) {
+    @Override
+    protected SystemState handleTransition(WantedState wanted) {
+        return switch (wanted) {
             case ANGLING -> SystemState.ANGLING;
             case HOME -> SystemState.HOME;
             case OFF -> SystemState.OFF;
         };
     }
 
-    private void executeActions() {
-        switch (currentState) {
-            case ANGLING -> io.setHoodFromSetpoint(hoodAngleDeg);
-            case HOME -> io.returnHoodToHome();
-            case OFF -> io.off();
+    @Override
+    protected void applyState(SystemState state, boolean stateChanged) {
+        switch (state) {
+            case ANGLING -> io.setHoodFromSetpoint(getSetpoint());
+            case HOME -> {
+                setSetpoint(HoodConsts.Setpoint.MIN_POSITION);
+                io.returnHoodToHome();
+            }
+            case OFF -> {
+
+                if (stateChanged) {
+                    io.off();
+                }
+            }
         }
     }
 

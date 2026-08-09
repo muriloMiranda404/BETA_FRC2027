@@ -8,10 +8,7 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import java.util.Optional;
 
 public class HubTracker {
-    /**
-     * Returns an {@link Optional} containing the current {@link Shift}.
-     * Will return {@link Optional#empty()} if disabled or in between auto and teleop.
-     */
+
     public static Optional<Shift> getCurrentShift() {
         double matchTime = getMatchTime();
         if (matchTime < 0) return Optional.empty();
@@ -24,18 +21,12 @@ public class HubTracker {
         return Optional.empty();
     }
 
-    /**
-     * Returns an {@link Optional} containing the current {@link Time} remaining in the current shift.
-     * Will return {@link Optional#empty()} if disabled or in between auto and teleop.
-     */
+
     public static Optional<Time> timeRemainingInCurrentShift() {
         return getCurrentShift().map((shift) -> Seconds.of(shift.endTime - getMatchTime()));
     }
 
-    /**
-     * Returns an {@link Optional} containing the next {@link Shift}.
-     * Will return {@link Optional#empty()} if disabled or in between auto and teleop.
-     */
+
     public static Optional<Shift> getNextShift() {
         double matchTime = getMatchTime();
 
@@ -47,10 +38,7 @@ public class HubTracker {
         return Optional.empty();
     }
 
-    /**
-     * Returns whether the hub is active during the specified {@link Shift} for the specified {@link Alliance}.
-     * Will return {@code false} if disabled or in between auto and teleop.
-     */
+
     public static boolean isActive(Alliance alliance, Shift shift) {
         Optional<Alliance> autoWinner = getAutoWinner();
         switch (shift.activeType) {
@@ -65,57 +53,39 @@ public class HubTracker {
         }
     }
 
-    /**
-     * Returns whether the hub is active during the current {@link Shift} for the specified {@link Alliance}.
-     * Will return {@code false} if disabled or in between auto and teleop.
-     */
+
     public static boolean isActive(Alliance alliance) {
         Optional<Shift> currentShift = getCurrentShift();
         return currentShift.isPresent() && isActive(alliance, currentShift.get());
     }
 
-    /**
-     * Returns whether the hub is active during the specified {@link Shift} for the robot's {@link Alliance}.
-     * Will return {@code false} if disabled or in between auto and teleop.
-     */
+
     public static boolean isActive(Shift shift) {
         Optional<Alliance> alliance = DriverStation.getAlliance();
         return alliance.isPresent() && isActive(alliance.get(), shift);
     }
 
-    /**
-     * Returns whether the hub is active during the current {@link Shift} for the robot's {@link Alliance}.
-     * Will return {@code false} if disabled or in between auto and teleop.
-     */
+
     public static boolean isActive() {
         Optional<Shift> currentShift = getCurrentShift();
         Optional<Alliance> alliance = DriverStation.getAlliance();
         return currentShift.isPresent() && alliance.isPresent() && isActive(alliance.get(), currentShift.get());
     }
 
-    /**
-     * Returns whether the hub is active for the next {@link Shift} for the specified {@link Alliance}.
-     * Will return {@code false} if disabled or in between auto and teleop.
-     */
+
     public static boolean isActiveNext(Alliance alliance) {
         Optional<Shift> nextShift = getNextShift();
         return nextShift.isPresent() && isActive(alliance, nextShift.get());
     }
 
-    /**
-     * Returns whether the hub is active during the specified {@link Shift} for the specified {@link Alliance}.
-     * Will return {@code false} if disabled or in between auto and teleop.
-     */
+
     public static boolean isActiveNext() {
         Optional<Shift> nextShift = getNextShift();
         Optional<Alliance> alliance = DriverStation.getAlliance();
         return nextShift.isPresent() && alliance.isPresent() && isActive(alliance.get(), nextShift.get());
     }
 
-    /**
-     * Returns the {@link Alliance} that won auto as specified by the FMS/Driver Station's game specific message data.
-     * Will return {@link Optional#empty()} if no game message or alliance is available.
-     */
+
     public static Optional<Alliance> getAutoWinner() {
         String msg = DriverStation.getGameSpecificMessage();
         char msgChar = msg.length() > 0 ? msg.charAt(0) : ' ';
@@ -129,10 +99,7 @@ public class HubTracker {
         }
     }
 
-    /**
-     * Counts up from 0 to 160 seconds as match progresses.
-     * Returns -1 if not match isn't running or if in between auto and teleop
-     */
+
     public static double getMatchTime() {
         if (DriverStation.isAutonomous()) {
             if (DriverStation.getMatchTime() < 0) return DriverStation.getMatchTime();
@@ -144,19 +111,7 @@ public class HubTracker {
         return -1;
     }
 
-    /**
-     * Represents an alliance shift.<br>
-     * <h4>Values:</h4>
-     * <ul>
-     * <li>{@link Shift#AUTO}</li> (0-20 sec)
-     * <li>{@link Shift#TRANSITION}</li> (20-30 sec)
-     * <li>{@link Shift#SHIFT_1}</li> (30-55 sec)
-     * <li>{@link Shift#SHIFT_2}</li> (55-80 sec)
-     * <li>{@link Shift#SHIFT_3}</li> (80-105 sec)
-     * <li>{@link Shift#SHIFT_4}</li> (105-130 sec)
-     * <li>{@link Shift#ENDGAME}</li> (130-160 sec)
-     * </ul>
-     */
+
     public enum Shift {
         AUTO(0, 20, ActiveType.BOTH),
         TRANSITION(20, 30, ActiveType.BOTH),

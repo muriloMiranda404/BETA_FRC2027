@@ -14,7 +14,7 @@ import com.ctre.phoenix.motorcontrol.can.VictorSPXConfiguration;
 import edu.wpi.first.math.controller.PIDController;
 import frc.frc_java9485.motors.ctre.io.CtreMotorIO;
 import frc.frc_java9485.motors.ctre.io.CtreMotorInputsAutoLogged;
-import frc.frc_java9485.utils.TunableControls.ControlConstants;
+import frc.frc_java9485.utils.control.TunableControls.ControlConstants;
 
 public class VictorSPXMotor implements CtreMotorIO{
     private final VictorSPX motor;

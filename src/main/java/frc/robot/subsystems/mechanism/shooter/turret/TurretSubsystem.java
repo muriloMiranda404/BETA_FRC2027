@@ -1,71 +1,45 @@
 package frc.robot.subsystems.mechanism.shooter.turret;
 
-import java.util.function.Supplier;
+import frc.frc_java9485.bases.ServoMechanism;
+import frc.frc_java9485.constants.mechanisms.shooter.TurretConsts;
 
-import org.littletonrobotics.junction.Logger;
 
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.frc_java9485.constants.utils.LoggerConstants;
+public class TurretSubsystem extends ServoMechanism<TurretSubsystem.WantedState, TurretSubsystem.SystemState, TurretIOInputsAutoLogged> {
 
-public class TurretSubsystem extends SubsystemBase {
+
+    private static final double PASSING_ANGLE_DEG = 90.0;
 
     private final TurretIO io;
-    private final TurretIOInputsAutoLogged inputs;
 
-    private final Supplier<Pose2d> poseSupplier;
-
-    private WantedState wantedState = WantedState.OFF;
-    private SystemState currentState = SystemState.OFF;
-    private SystemState lastState = null;
-
-    private double aimingSetpointDeg = 0.0;
-    private Translation3d currentTarget = null;
-
-    public TurretSubsystem(TurretIO io, Supplier<Pose2d> poseSupplier) {
+    public TurretSubsystem(TurretIO io) {
+        super("Turret",
+              new TurretIOInputsAutoLogged(),
+              WantedState.OFF,
+              SystemState.OFF,
+              TurretConsts.Setpoint.MIN_TURN_ANGLE_DEG,
+              TurretConsts.Setpoint.MAX_TURN_ANGLE_DEG,
+              TurretConsts.Setpoint.TOLERANCE_DEG);
         this.io = io;
-        this.inputs = new TurretIOInputsAutoLogged();
-        this.poseSupplier = poseSupplier;
+    }
+
+
+    public void setAimingSetpoint(double degrees) {
+        setSetpoint(degrees);
     }
 
     @Override
-    public void periodic() {
+    public double getMeasuredPosition() {
+        return inputs.turretAngle;
+    }
+
+    @Override
+    protected void readInputs(TurretIOInputsAutoLogged inputs) {
         io.processInputs(inputs);
-        Logger.processInputs(LoggerConstants.MECHANISM_KEY + "Turret/", inputs);
-
-        if (currentTarget != null && wantedState == WantedState.AIMING) {
-            aimingSetpointDeg = TurretCalculator.calculateTurretAngle(
-                poseSupplier.get(), currentTarget
-            );
-        }
-
-        currentState = handleTransition();
-        applyState();
     }
 
-    public void setWantedState(WantedState state) {
-        this.wantedState = state;
-    }
-
-    public void setTarget(Translation3d target) {
-        this.currentTarget = target;
-    }
-
-    public void setAimingSetpoint(double degrees) {
-        this.aimingSetpointDeg = degrees;
-    }
-
-    public boolean atSetpoint() {
-        return inputs.atSetpoint;
-    }
-
-    public SystemState getCurrentState() {
-        return currentState;
-    }
-
-    private SystemState handleTransition() {
-        return switch (wantedState) {
+    @Override
+    protected SystemState handleTransition(WantedState wanted) {
+        return switch (wanted) {
             case AIMING -> SystemState.AIMING;
             case SAVED -> SystemState.SAVED;
             case PASSING -> SystemState.PASSING;
@@ -73,18 +47,26 @@ public class TurretSubsystem extends SubsystemBase {
         };
     }
 
-    private void applyState() {
-        switch (currentState) {
-            case AIMING -> io.setTurretPosition(aimingSetpointDeg);
-            case SAVED -> io.setTurretPosition(0.0);
-            case PASSING -> io.setTurretPosition(90.0);
+    @Override
+    protected void applyState(SystemState state, boolean stateChanged) {
+        switch (state) {
+
+            case AIMING -> io.setTurretPosition(getSetpoint());
+            case SAVED -> {
+                setSetpoint(0.0);
+                io.setTurretPosition(getSetpoint());
+            }
+            case PASSING -> {
+                setSetpoint(PASSING_ANGLE_DEG);
+                io.setTurretPosition(getSetpoint());
+            }
             case OFF -> {
-                if (lastState != SystemState.OFF) {
+
+                if (stateChanged) {
                     io.stop();
                 }
             }
         }
-        lastState = currentState;
     }
 
     public enum SystemState {

@@ -75,7 +75,7 @@ public class ShiftUtil {
 	public static Alliance getFirstActiveAlliance() {
 		var alliance = DriverStation.getAlliance().orElse(Alliance.Blue);
 
-		// Return override value
+
 		var winOverride = getAllianceWinOverride();
 		if (!winOverride.isEmpty()) {
 			validWinReportSignal = true;
@@ -84,7 +84,7 @@ public class ShiftUtil {
 					: (alliance == Alliance.Blue ? Alliance.Blue : Alliance.Red);
 		}
 
-		// Return FMS value
+
 		String message = DriverStation.getGameSpecificMessage();
 		if (message.length() > 0) {
 			char character = message.charAt(0);
@@ -97,12 +97,12 @@ public class ShiftUtil {
 			}
 		}
 
-		// Return default value
+
 		validWinReportSignal = false;
 		return alliance == Alliance.Blue ? Alliance.Red : Alliance.Blue;
 	}
 
-	/** Starts the timer at the beginning of teleop. */
+
 	public static void initialize() {
 		setWinAutoOverride(() -> {
 			switch (winOverrideState) {
@@ -156,15 +156,15 @@ public class ShiftUtil {
 				}
 			}
 			if (currentShiftIndex < 0) {
-				// After last shift, so assume endgame
+
 				currentShiftIndex = shiftStartTimes.length - 1;
 			}
 
-			// Calculate elapsed and remaining time in the current shift, ignoring combined shifts
+
 			stateTimeElapsed = currentTime - shiftStartTimes[currentShiftIndex];
 			stateTimeRemaining = shiftEndTimes[currentShiftIndex] - currentTime;
 
-			// If the state is the same as the last shift, combine the elapsed time
+
 			if (currentShiftIndex > 0) {
 				if (currentSchedule[currentShiftIndex] == currentSchedule[currentShiftIndex - 1]
 						&& validWinReportSignal) {
@@ -172,7 +172,7 @@ public class ShiftUtil {
 				}
 			}
 
-			// If the state is the same as the next shift, combine the remaining time
+
 			if (currentShiftIndex < shiftEndTimes.length - 1) {
 				if (currentSchedule[currentShiftIndex] == currentSchedule[currentShiftIndex + 1]
 						&& validWinReportSignal) {
@@ -221,7 +221,7 @@ public class ShiftUtil {
 				getShiftInfo(getSchedule(), shiftStartTimes, shiftEndTimes).remainingTime());
 		SmartDashboard.putNumber("DS Timer", DriverStation.getMatchTime());
 
-		// Publish internal timer vs DriverStation match time for debugging and comparison
+
 		double internalTimerSeconds = shiftTimer.get();
 		double dsMatchTimeSeconds = DriverStation.getMatchTime();
 		double teleopElapsedFromDS =

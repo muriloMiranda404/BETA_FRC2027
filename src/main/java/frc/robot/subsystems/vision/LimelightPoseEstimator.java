@@ -2,11 +2,13 @@ package frc.robot.subsystems.vision;
 
 import java.util.Optional;
 
+import static frc.frc_java9485.constants.robot.VisionConsts.APRIL_TAG_FIELD_LAYOUT;
+
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.wpilibj.DriverStation;
 import frc.frc_java9485.loggers.CustomBooleanLogger;
 import frc.frc_java9485.loggers.CustomDoubleLogger;
 import frc.frc_java9485.loggers.CustomPose2dLogger;
@@ -18,9 +20,10 @@ import frc.robot.subsystems.vision.io.PoseEstimator;
 public class LimelightPoseEstimator implements PoseEstimator {
   NetworkTableInstance inst = NetworkTableInstance.getDefault();
 
-  double fieldLength = Units.inchesToMeters(690.876);
 
-  double fieldWidth = Units.inchesToMeters(317);
+  double fieldLength = APRIL_TAG_FIELD_LAYOUT.getFieldLength();
+
+  double fieldWidth = APRIL_TAG_FIELD_LAYOUT.getFieldWidth();
 
   double limitAngVelForUpdating;
 
@@ -31,6 +34,9 @@ public class LimelightPoseEstimator implements PoseEstimator {
   boolean useMegaTag1;
 
   private Boolean useVisionHeadingCorrection = false;
+
+  private int[] tagFilter = null;
+  private boolean tagFilterDirty = false;
 
   CustomStringLogger stateOfPoseUpdate;
 
@@ -66,9 +72,10 @@ public class LimelightPoseEstimator implements PoseEstimator {
         "/Vision/LimelightPoseEstimator/" + limelightName + "/DistanceToTag");
     this.stateOfPoseUpdate = new CustomStringLogger(
         "/Vision/LimelightPoseEstimator/" + limelightName + "/StateOfPoseUpdate");
-    this.stdDevXYLogger = new CustomDoubleLogger("Vision/PhotonVisionPoseEstimator/" + limelightName + "/stdDevXY");
+    this.stdDevXYLogger = new CustomDoubleLogger(
+        "/Vision/LimelightPoseEstimator/" + limelightName + "/stdDevXY");
     this.stdDevThetaLogger = new CustomDoubleLogger(
-        "Vision/PhotonVisionPoseEstimator/" + limelightName + "/stdDevTheta");
+        "/Vision/LimelightPoseEstimator/" + limelightName + "/stdDevTheta");
   }
 
   public LimelightPoseEstimator(String limelightName, boolean only2TagsMeasurements) {
@@ -79,15 +86,38 @@ public class LimelightPoseEstimator implements PoseEstimator {
     this(limelightName, false);
   }
 
+
+  public void setTagFilter(int[] validIds) {
+    this.tagFilter = (validIds == null || validIds.length == 0) ? null : validIds.clone();
+    this.tagFilterDirty = true;
+  }
+
+
+  public void clearTagFilter() {
+    setTagFilter(null);
+  }
+
   public Optional<PoseEstimation> getEstimatedPose(Pose2d referencePose) {
     try {
+      applyTagFilterIfChanged();
+
+      double measuredYawRateDegPerSec = Math.toDegrees(StaticSwerve.getMeasuredAngularVelocity());
+
+
+      if (!useMegaTag1) {
+        LimelightHelpers.SetRobotOrientation(
+            this.limelightName, referencePose.getRotation().getDegrees(), measuredYawRateDegPerSec, 0, 0, 0, 0);
+        this.headingMegaTag2.append(referencePose.getRotation().getDegrees());
+      }
+
       if (!LimelightHelpers.getTV(this.limelightName)
-          || Math.abs(StaticSwerve.getAngularVelocity()) >= limitAngVelForUpdating) {
+          || Math.abs(StaticSwerve.getMeasuredAngularVelocity()) >= limitAngVelForUpdating) {
         this.isDetectingLogger.append(false);
         this.numberOfDetectedTagsLogger.append(0);
         this.stateOfPoseUpdate.append("WITHOUT_TARGET_OR_HIGH_ANGULAR_VELOCITY");
         return Optional.empty();
       }
+
       PoseEstimate limelightPoseEstimate;
       if (useMegaTag1) {
         limelightPoseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue(this.limelightName);
@@ -96,21 +126,16 @@ public class LimelightPoseEstimator implements PoseEstimator {
         limelightPoseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(this.limelightName);
         this.stateOfPoseUpdate.append("GETTING_MEGATAG_2");
       }
-      if (limelightPoseEstimate == null) {
+
+      if (limelightPoseEstimate == null || limelightPoseEstimate.tagCount == 0) {
+        this.isDetectingLogger.append(false);
+        this.numberOfDetectedTagsLogger.append(0);
+        this.stateOfPoseUpdate.append("REJECTED_BY_NO_TAGS");
         return Optional.empty();
       }
 
-      if (limelightPoseEstimate.tagCount == 1) {
-        useVisionHeadingCorrection = false;
-      } else {
-        useVisionHeadingCorrection = false;
-      }
-
       PoseEstimation poseEstimation = convertPoseEstimate(limelightPoseEstimate);
-      this.isDetectingLogger.append(true);
-      this.detectedPoseLogger.appendRadians(poseEstimation.estimatedPose.toPose2d());
-      this.numberOfDetectedTagsLogger.append(poseEstimation.numberOfTargetsUsed);
-      this.distToTag.append(poseEstimation.distanceToTag);
+
       if (poseOutOfField(poseEstimation)) {
         this.stateOfPoseUpdate.append("REJECTED_BY_OUT_OF_THE_FIELD_ESTIMATION");
         return Optional.empty();
@@ -120,10 +145,31 @@ public class LimelightPoseEstimator implements PoseEstimator {
         return Optional.empty();
       }
 
+
+      this.isDetectingLogger.append(true);
+      this.detectedPoseLogger.appendRadians(poseEstimation.estimatedPose.toPose2d());
+      this.numberOfDetectedTagsLogger.append(poseEstimation.numberOfTargetsUsed);
+      this.distToTag.append(poseEstimation.distanceToTag);
+      this.stdDevXYLogger.append(poseEstimation.visionStdDev.get(0, 0));
+      this.stdDevThetaLogger.append(poseEstimation.visionStdDev.get(2, 0));
+
       return Optional.of(poseEstimation);
     } catch (Exception e) {
+      this.stateOfPoseUpdate.append("EXCEPTION: " + e.getMessage());
+      DriverStation.reportError(
+          "LimelightPoseEstimator[" + this.limelightName + "] error: " + e.getMessage(), e.getStackTrace());
       return Optional.empty();
     }
+  }
+
+
+  private void applyTagFilterIfChanged() {
+    if (!tagFilterDirty) {
+      return;
+    }
+    LimelightHelpers.SetFiducialIDFiltersOverride(
+        this.limelightName, tagFilter == null ? new int[0] : tagFilter);
+    tagFilterDirty = false;
   }
 
   private boolean poseOutOfField(PoseEstimation pose2D) {

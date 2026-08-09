@@ -17,7 +17,7 @@ public class CustomBooleanLogger extends BooleanLogEntry {
     super(DataLogManager.getLog(), name);
     this.name = name;
     CustomBooleanLogger.isFmsMatch = DriverStation.getMatchNumber() > 0;
-    this.loggedValue = true; // Set to something different than default for initial logging
+    this.loggedValue = true;
     this.append(false);
   }
 

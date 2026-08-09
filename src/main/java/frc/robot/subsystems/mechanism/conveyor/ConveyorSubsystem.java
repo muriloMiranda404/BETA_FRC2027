@@ -1,49 +1,37 @@
 package frc.robot.subsystems.mechanism.conveyor;
 
-import org.littletonrobotics.junction.Logger;
+import frc.frc_java9485.bases.StateMachineMechanism;
 
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.frc_java9485.constants.utils.LoggerConstants;
 
-public class ConveyorSubsystem extends SubsystemBase{
+public class ConveyorSubsystem extends StateMachineMechanism<ConveyorSubsystem.WantedState, ConveyorSubsystem.SystemState, ConveyorInputsAutoLogged> {
 
     private final ConveyorIO io;
 
-    private WantedState wantedState = WantedState.STOPPED;
-    private SystemState currentState = SystemState.STOPPED;
-
-    private final ConveyorInputsAutoLogged inputs;
-
     public ConveyorSubsystem(ConveyorIO io){
+        super("Conveyor", new ConveyorInputsAutoLogged(), WantedState.STOPPED, SystemState.STOPPED);
         this.io = io;
-
-        this.inputs = new ConveyorInputsAutoLogged();
     }
 
-    private SystemState handleTransition(){
-        return SystemState.valueOf(wantedState.name());
+    @Override
+    protected void readInputs(ConveyorInputsAutoLogged inputs) {
+        io.processInputs(inputs);
     }
 
-    public void setWantedState(WantedState state){
-        this.wantedState = state;
+    @Override
+    protected SystemState handleTransition(WantedState wanted){
+        return switch (wanted) {
+            case EXPANDING -> SystemState.EXPANDING;
+            case WITHDRAWING -> SystemState.WITHDRAWING;
+            case STOPPED -> SystemState.STOPPED;
+        };
     }
 
-    private void executeAction(){
-        switch (currentState) {
-            case STOPPED:
-                io.stop();
-            break;
-
-            case WITHDRAWING:
-                io.runToMin();
-            break;
-
-            case EXPANDING:
-                io.runToMax();
-            break;
-
-            default:
-                break;
+    @Override
+    protected void applyState(SystemState state, boolean stateChanged){
+        switch (state) {
+            case STOPPED -> io.stop();
+            case WITHDRAWING -> io.runToMin();
+            case EXPANDING -> io.runToMax();
         }
     }
 
@@ -55,16 +43,7 @@ public class ConveyorSubsystem extends SubsystemBase{
         return io.atLimit();
     }
 
-    @Override
-    public void periodic() {
-        io.processInputs(inputs);
-        Logger.processInputs(LoggerConstants.MECHANISM_KEY+"Conveyor/", inputs);
-
-        this.currentState = handleTransition();
-        this.executeAction();
-    }
-
-    private enum SystemState{
+    public enum SystemState{
         EXPANDING,
         WITHDRAWING,
         STOPPED

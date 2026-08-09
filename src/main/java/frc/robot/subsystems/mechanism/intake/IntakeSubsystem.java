@@ -1,73 +1,56 @@
 package frc.robot.subsystems.mechanism.intake;
 
-import org.littletonrobotics.junction.Logger;
-
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.frc_java9485.bases.StateMachineMechanism;
 import frc.frc_java9485.constants.mechanisms.IntakeConsts;
-import frc.frc_java9485.constants.utils.LoggerConstants;
 
-public class IntakeSubsystem extends SubsystemBase{
 
-  private IntakeIO io;
+public class IntakeSubsystem extends StateMachineMechanism<IntakeSubsystem.WantedState, IntakeSubsystem.SystemState, IntakeInputsAutoLogged> {
 
-  private SystemState currentState = SystemState.SAVED;
-  private WantedState wantedState = WantedState.SAVED;
-
-  private final IntakeInputsAutoLogged inputs;
+  private final IntakeIO io;
 
   public IntakeSubsystem(IntakeIO io){
+    super("Intake", new IntakeInputsAutoLogged(), WantedState.SAVED, SystemState.SAVED);
     this.io = io;
-
-    this.inputs = new IntakeInputsAutoLogged();
   }
 
   @Override
-  public void periodic() {
+  protected void readInputs(IntakeInputsAutoLogged inputs) {
     io.processInputs(inputs);
-    Logger.processInputs(LoggerConstants.MECHANISM_KEY+"Intake/", inputs);
-
-    this.currentState = handleTransition();
-    this.executeActions();
   }
 
-  private SystemState handleTransition(){
-    return SystemState.valueOf(wantedState.name());
+  @Override
+  protected SystemState handleTransition(WantedState wanted){
+    return switch (wanted) {
+      case COLLECTING -> SystemState.COLLECTING;
+      case EJECTING -> SystemState.EJECTING;
+      case SAVED -> SystemState.SAVED;
+    };
   }
 
-  private void executeActions(){
-    switch (currentState) {
-      case COLLECTING:
-          io.setColectOutput(IntakeConsts.Setpoint.COLLECT_FUEL_SPEED);
-          io.setPivotPosition(IntakeConsts.Setpoint.SETPOINT_DOWN);
-        break;
-
-      case SAVED:
-          io.stopColect();
-          io.setPivotPosition(IntakeConsts.Setpoint.SETPOINT_UP);
-        break;
-
-      case EJECTING:
-          io.setColectOutput(-IntakeConsts.Setpoint.COLLECT_FUEL_SPEED);
-          io.setPivotPosition(IntakeConsts.Setpoint.SETPOINT_DOWN);
-        break;
-      default:
-        break;
+  @Override
+  protected void applyState(SystemState state, boolean stateChanged){
+    switch (state) {
+      case COLLECTING -> {
+        io.setColectOutput(IntakeConsts.Setpoint.COLLECT_FUEL_SPEED);
+        io.setPivotPosition(IntakeConsts.Setpoint.SETPOINT_DOWN);
+      }
+      case EJECTING -> {
+        io.setColectOutput(-IntakeConsts.Setpoint.COLLECT_FUEL_SPEED);
+        io.setPivotPosition(IntakeConsts.Setpoint.SETPOINT_DOWN);
+      }
+      case SAVED -> {
+        io.stopColect();
+        io.setPivotPosition(IntakeConsts.Setpoint.SETPOINT_UP);
+      }
     }
   }
 
-  public WantedState getWantedState(){
-    return wantedState;
+
+  public double getPivotPosition(){
+    return inputs.pivotAngle;
   }
 
-  public SystemState getSystemState(){
-    return currentState;
-  }
-
-  public void setWantedState(WantedState state){
-    this.wantedState = state;
-  }
-
-  private enum SystemState{
+  public enum SystemState{
     COLLECTING,
     EJECTING,
     SAVED

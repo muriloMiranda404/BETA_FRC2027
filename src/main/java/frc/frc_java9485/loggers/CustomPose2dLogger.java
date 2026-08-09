@@ -13,7 +13,7 @@ public class CustomPose2dLogger {
 
   private static boolean isFmsMatch;
 
-  // private String name;
+
 
   private Pose2d loggedValue;
 
@@ -22,13 +22,12 @@ public class CustomPose2dLogger {
   private StructLogEntry<Pose2d> logEntry;
 
   public CustomPose2dLogger(String name) {
-    // super(DataLogManager.getLog(), name);
-    // this.name = name;
+
     this.logEntry = StructLogEntry.create(DataLogManager.getLog(), name, Pose2d.struct);
     this.publisher = NetworkTableInstance.getDefault()
         .getStructTopic(name, Pose2d.struct).publish();
     CustomPose2dLogger.isFmsMatch = DriverStation.getMatchNumber() > 0;
-    this.loggedValue = new Pose2d(new Translation2d(100, 100), new Rotation2d()); // Set to something different than
+    this.loggedValue = new Pose2d(new Translation2d(100, 100), new Rotation2d());
     this.appendRadians(new Pose2d());
   }
 

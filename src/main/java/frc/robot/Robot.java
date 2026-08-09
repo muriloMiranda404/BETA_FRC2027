@@ -10,11 +10,17 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.frc_java9485.constants.robot.RobotConsts;
-import frc.frc_java9485.utils.Elastic;
-import frc.frc_java9485.utils.Elastic.Notification;
-import frc.frc_java9485.utils.Elastic.Notification.NotificationLevel;
+import frc.frc_java9485.motors.ctre.phoenix6.StatusSignalRefresher;
 import frc.frc_java9485.utils.Rebuilt.HubTracker;
-import frc.frc_java9485.utils.Simulation;
+import frc.frc_java9485.utils.Rebuilt.Simulation;
+import frc.frc_java9485.utils.Rebuilt.Zones;
+import frc.frc_java9485.utils.VirtualSubsystem;
+import frc.frc_java9485.utils.logger.Elastic;
+import frc.frc_java9485.utils.logger.LoggedTracer;
+import frc.frc_java9485.utils.logger.VirtualPD;
+import frc.frc_java9485.utils.logger.wpilogxz.WPILOGXZWriter;
+import frc.frc_java9485.utils.logger.Elastic.Notification;
+import frc.frc_java9485.utils.logger.Elastic.Notification.NotificationLevel;
 import frc.robot.subsystems.swerve.SwerveSubsystem;
 
 import static edu.wpi.first.units.Units.Seconds;
@@ -26,16 +32,17 @@ import org.littletonrobotics.junction.LoggedRobot;
 import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.NT4Publisher;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
-import org.littletonrobotics.urcl.URCL;
 
 public class Robot extends LoggedRobot {
   private Command m_autonomousCommand;
 
   private double currentMatchTime;
   private boolean runnedAutonomous;
+  private boolean hubWasActive;
 
   private final Timer timer;
   private final PowerDistribution powerDistribution;
+  private final RobotAlerts robotAlerts;
 
   private final Optional<Time> shiftTime = HubTracker.timeRemainingInCurrentShift();
 
@@ -47,7 +54,9 @@ public class Robot extends LoggedRobot {
     switch (RobotConsts.CURRENT_ROBOT_MODE) {
       case REAL:
         Logger.addDataReceiver(new NT4Publisher());
-        Logger.addDataReceiver(new WPILOGWriter(RobotConsts.LOGS_PATH));
+        Logger.addDataReceiver(RobotConsts.USE_COMPRESSED_LOGS
+            ? new WPILOGXZWriter(RobotConsts.LOGS_PATH)
+            : new WPILOGWriter(RobotConsts.LOGS_PATH));
         break;
 
       case SIM:
@@ -56,14 +65,18 @@ public class Robot extends LoggedRobot {
         break;
     }
 
-    Logger.registerURCL(URCL.startExternal());
+
     Logger.start();
 
     m_robotContainer = new RobotContainer();
     swerve = SwerveSubsystem.getInstance();
 
+
+    StatusSignalRefresher.getInstance().finalizeStatusSignals();
+
     timer = new Timer();
     powerDistribution = new PowerDistribution();
+    robotAlerts = new RobotAlerts(powerDistribution);
 
     currentMatchTime = 0.00;
     runnedAutonomous = false;
@@ -76,11 +89,35 @@ public class Robot extends LoggedRobot {
   @Override
   public void robotInit() {
     WebServer.start(5800, Filesystem.getDeployDirectory().getPath());
+
+
+    Zones.logAllZones();
   }
 
   @Override
   public void robotPeriodic() {
+    LoggedTracer.reset();
+
+
+    StatusSignalRefresher.getInstance().refreshStatusSignals();
+    LoggedTracer.record("StatusSignals");
+
+
+    VirtualSubsystem.runAllPeriodic();
+    LoggedTracer.record("VirtualSubsystems");
+
     CommandScheduler.getInstance().run();
+    LoggedTracer.record("CommandScheduler");
+
+    VirtualSubsystem.runAllPeriodicAfterScheduler();
+    LoggedTracer.record("VirtualSubsystemsAfter");
+
+    String gameMessage = DriverStation.getGameSpecificMessage();
+    RobotState.getInstance().setGameSpecificMessage(gameMessage.isEmpty() ? null : gameMessage);
+
+    robotAlerts.update();
+    VirtualPD.logAll();
+
     SmartDashboard.putBoolean("hub is active", HubTracker.isActive());
     SmartDashboard.putNumber("batery voltage", powerDistribution.getVoltage());
 
@@ -94,6 +131,8 @@ public class Robot extends LoggedRobot {
 
     currentMatchTime = DriverStation.getMatchTime();
     SmartDashboard.putNumber("Match Time", currentMatchTime);
+
+    LoggedTracer.record("RobotPeriodic");
   }
 
   @Override
@@ -149,11 +188,13 @@ public class Robot extends LoggedRobot {
 
   @Override
   public void teleopPeriodic() {
-    if(HubTracker.isActive()){
+
+    boolean hubActive = HubTracker.isActive();
+    if (hubActive && !hubWasActive) {
       Elastic.sendNotification(new Notification(NotificationLevel.INFO,
-                                          "Hub is active",
-                                    "the hub is active"));
+          "Hub is active", "the hub is active"));
     }
+    hubWasActive = hubActive;
   }
 
   @Override
@@ -164,5 +205,6 @@ public class Robot extends LoggedRobot {
   @Override
   public void simulationPeriodic() {
     simulator.updateArena();
+    m_robotContainer.updateSimulation();
   }
 }

@@ -11,12 +11,12 @@ import frc.frc_java9485.utils.Rebuilt.AllianceFlip;
 
 public final class FieldElementsConst {
 public static final class FieldMeansureds{
-    public static final double FIELD_WIDTH_METERS = 8.21; // X
-    public static final double FIELD_LENGTH_METERS = 16.54; // Y
+    public static final double FIELD_WIDTH_METERS = 8.21;
+    public static final double FIELD_LENGTH_METERS = 16.54;
 
-    public static final double FUEL_DIAMETER = 0.15; // CM -> M
-    public static final double FUEL_RADIUS = FUEL_DIAMETER / 2; // CM -> M
-    public static final double FUEL_SPACING = 0.15; // CM -> M
+    public static final double FUEL_DIAMETER = 0.15;
+    public static final double FUEL_RADIUS = FUEL_DIAMETER / 2;
+    public static final double FUEL_SPACING = 0.15;
 
     public static final Distance ALLIANCE_ZONE = Inches.of(156.06);
 

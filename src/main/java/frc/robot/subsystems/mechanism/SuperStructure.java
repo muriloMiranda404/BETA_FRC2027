@@ -1,10 +1,15 @@
 package frc.robot.subsystems.mechanism;
 
-import java.util.function.Supplier;
 
-import edu.wpi.first.math.geometry.Pose2d;
+import org.littletonrobotics.junction.AutoLogOutput;
+import org.littletonrobotics.junction.Logger;
+
+import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.RobotState;
+import frc.frc_java9485.bases.StateGraph;
+import frc.frc_java9485.constants.utils.LoggerConstants;
 import frc.robot.subsystems.mechanism.conveyor.ConveyorIO;
 import frc.robot.subsystems.mechanism.conveyor.ConveyorSubsystem;
 import frc.robot.subsystems.mechanism.index.IndexIO;
@@ -13,6 +18,7 @@ import frc.robot.subsystems.mechanism.intake.IntakeIO;
 import frc.robot.subsystems.mechanism.intake.IntakeSubsystem;
 import frc.robot.subsystems.mechanism.shooter.ShooterSubsystem;
 import frc.robot.subsystems.mechanism.shooter.ShooterSubsystem.ShooterWantedState;
+import frc.robot.subsystems.mechanism.shooter.ShotVerifier;
 import frc.robot.subsystems.mechanism.shooter.flyWheel.FlyWheelIO;
 import frc.robot.subsystems.mechanism.shooter.hood.HoodIO;
 import frc.robot.subsystems.mechanism.shooter.turret.TurretIO;
@@ -23,24 +29,39 @@ public class SuperStructure extends SubsystemBase{
     private final IndexSubsystem index;
     private final ConveyorSubsystem conveyor;
     private final ShooterSubsystem shooter;
-    private final RobotState robotState;
 
+    private static final String LOG_KEY = LoggerConstants.MECHANISM_KEY + "SuperStructure/";
+
+    private final StateGraph<SystemState> stateGraph = buildStateGraph();
+
+    @AutoLogOutput
     private WantedState wantedState = WantedState.OFF;
+
+    @AutoLogOutput
     private SystemState currentState = SystemState.OFF;
 
-    public SuperStructure(HoodIO io, TurretIO io2, FlyWheelIO io3, IntakeIO io4,
-                          IndexIO io5, ConveyorIO io6, Supplier<Pose2d> poseSupplier){
-        this.shooter = new ShooterSubsystem(io2, io, io3, poseSupplier);
-        this.intake = new IntakeSubsystem(io4);
-        this.index = new IndexSubsystem(io5);
-        this.conveyor = new ConveyorSubsystem(io6);
-        this.robotState = new RobotState();
+    public SuperStructure(HoodIO hoodIO, TurretIO turretIO, FlyWheelIO flyWheelIO, IntakeIO intakeIO,
+                          IndexIO indexIO, ConveyorIO conveyorIO){
+        this.shooter = new ShooterSubsystem(turretIO, hoodIO, flyWheelIO);
+        this.intake = new IntakeSubsystem(intakeIO);
+        this.index = new IndexSubsystem(indexIO);
+        this.conveyor = new ConveyorSubsystem(conveyorIO);
     }
 
     @Override
     public void periodic() {
+
+        if (DriverStation.isDisabled()) {
+            this.wantedState = WantedState.OFF;
+        }
+
         this.currentState = handleTransition();
         this.executeActions();
+
+
+        intake.update();
+        index.update();
+        conveyor.update();
     }
 
     private void executeActions(){
@@ -48,8 +69,23 @@ public class SuperStructure extends SubsystemBase{
             case SHOOTING:
                 shooter.setWantedState(ShooterWantedState.AIMING);
                 intake.setWantedState(IntakeSubsystem.WantedState.SAVED);
-                index.setWantedState(IndexSubsystem.WantedState.INDEXING);
-                conveyor.setWantedState(ConveyorSubsystem.WantedState.EXPANDING);
+
+
+                boolean readyToShoot = shooter.isReadyToShoot();
+                index.setWantedState(readyToShoot
+                        ? IndexSubsystem.WantedState.INDEXING
+                        : IndexSubsystem.WantedState.STOPPED);
+                conveyor.setWantedState(readyToShoot
+                        ? ConveyorSubsystem.WantedState.EXPANDING
+                        : ConveyorSubsystem.WantedState.STOPPED);
+            break;
+
+            case PREPARING:
+
+                shooter.setWantedState(ShooterWantedState.AIMING);
+                intake.setWantedState(IntakeSubsystem.WantedState.SAVED);
+                index.setWantedState(IndexSubsystem.WantedState.STOPPED);
+                conveyor.setWantedState(ConveyorSubsystem.WantedState.STOPPED);
             break;
 
             case PASSING:
@@ -88,21 +124,122 @@ public class SuperStructure extends SubsystemBase{
         this.wantedState = wantedState;
     }
 
+    public WantedState getWantedState(){
+        return this.wantedState;
+    }
+
+    public SystemState getCurrentState(){
+        return this.currentState;
+    }
+
+    public boolean isInState(SystemState state){
+        return this.currentState == state;
+    }
+
+
+    public boolean isReadyToShoot(){
+        return shooter.isReadyToShoot();
+    }
+
+
+    public ShotVerifier.Rejection getShotRejection(){
+        return shooter.getShotRejection();
+    }
+
+
+    public boolean mechanismsAtSetpoint(){
+        return shooter.mechanismsAtSetpoint();
+    }
+
+
+    public Command prepare(){
+        return startEnd(() -> setWantedState(WantedState.PREPARING), () -> setWantedState(WantedState.OFF));
+    }
+
+
+    public double getTurretAngleDeg(){
+        return shooter.getTurretAngleDeg();
+    }
+
+
+    public double getHoodPosition(){
+        return shooter.getHoodPosition();
+    }
+
+
+    public double getIntakePivotPosition(){
+        return intake.getPivotPosition();
+    }
+
+
+    public Translation3d getCurrentTarget(){
+        return shooter.getCurrentTarget();
+    }
+
+
+
+    public Command shoot(){
+        return startEnd(() -> setWantedState(WantedState.SHOOTING), () -> setWantedState(WantedState.OFF));
+    }
+
+    public Command collect(){
+        return startEnd(() -> setWantedState(WantedState.COLLECTING), () -> setWantedState(WantedState.OFF));
+    }
+
+    public Command pass(){
+        return startEnd(() -> setWantedState(WantedState.PASSING), () -> setWantedState(WantedState.OFF));
+    }
+
+    public Command eject(){
+        return startEnd(() -> setWantedState(WantedState.EJECTING_BY_INTAKE), () -> setWantedState(WantedState.OFF));
+    }
+
+
+    private static StateGraph<SystemState> buildStateGraph() {
+        StateGraph<SystemState> graph = new StateGraph<>(SystemState.class);
+
+        graph.connectAllThrough(SystemState.OFF, 0.25);
+        graph.addBidirectional(SystemState.SHOOTING, SystemState.PASSING, 0.15);
+
+        graph.addBidirectional(SystemState.SHOOTING, SystemState.PREPARING, 0.05);
+        graph.addBidirectional(SystemState.PASSING, SystemState.PREPARING, 0.15);
+
+        return graph;
+    }
+
     private SystemState handleTransition(){
-        return SystemState.valueOf(wantedState.name());
+        SystemState goal = switch (wantedState) {
+            case SHOOTING -> SystemState.SHOOTING;
+            case PASSING -> SystemState.PASSING;
+            case PREPARING -> SystemState.PREPARING;
+            case COLLECTING -> SystemState.COLLECTING;
+            case EJECTING_BY_INTAKE -> SystemState.EJECTING_BY_INTAKE;
+            case OFF -> SystemState.OFF;
+        };
+
+
+        SystemState next = stateGraph.nextStepToward(currentState, goal);
+
+        Logger.recordOutput(LOG_KEY + "GoalState", goal.toString());
+        Logger.recordOutput(LOG_KEY + "AtGoal", next == goal);
+
+        return next;
     }
 
     public enum WantedState {
         SHOOTING,
         PASSING,
+
+        PREPARING,
         COLLECTING,
         EJECTING_BY_INTAKE,
         OFF
     }
 
-    private enum SystemState{
+    public enum SystemState{
         SHOOTING,
         PASSING,
+        PREPARING,
         COLLECTING,
         EJECTING_BY_INTAKE,
         OFF
